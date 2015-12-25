@@ -10,3 +10,5 @@
 /Test_PointerContainer
 *.compiled
 *.or
+*.res
+*.lps
