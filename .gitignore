@@ -1,0 +1,12 @@
+*.o
+*.DS_Store
+/backup/
+/Test_PointerContainer.app/
+/Test_PointerContainer.dSYM/
+*.ppu
+*.rst
+*.s
+*.sh
+/Test_PointerContainer
+*.compiled
+*.or
