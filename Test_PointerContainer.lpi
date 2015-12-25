@@ -90,36 +90,26 @@
         <PackageName Value="FCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="6">
+    <Units Count="4">
       <Unit0>
         <Filename Value="Test_PointerContainer.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
-        <Filename Value="pointercontainer_test.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="PointerContainer_Test"/>
-      </Unit1>
-      <Unit2>
-        <Filename Value="pointercontainer.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="PointerContainer"/>
-      </Unit2>
-      <Unit3>
         <Filename Value="pointertrie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PointerTrie"/>
-      </Unit3>
-      <Unit4>
+      </Unit1>
+      <Unit2>
         <Filename Value="pointertrie_test.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="PointerTrie_Test"/>
-      </Unit4>
-      <Unit5>
+      </Unit2>
+      <Unit3>
         <Filename Value="trie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Trie"/>
-      </Unit5>
+      </Unit3>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
