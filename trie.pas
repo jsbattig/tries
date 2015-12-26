@@ -79,6 +79,7 @@ type
     case Integer of
       TrieDepth32Bits : (LastResult64 : Int64;);
       TrieDepth64Bits : (LastResult32 : Integer;);
+      0               : (LastResultPtr : Pointer;);
   end;
 
   { TTrie }
@@ -111,19 +112,20 @@ type
     function InternalFind(const Data; out ANode : PTrieLeafNode; out AChildIndex : Byte) : Boolean;
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
-    function IteratorBacktrack(var AIterator : TTrieIterator; var ResultAddr : Pointer) : Boolean;
+    function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
   protected
     procedure Add(const Data);
     function Find(const Data) : Boolean;
     procedure Remove(const Data);
-    function Next(var AIterator : TTrieIterator) : Pointer;
+    function Next(var AIterator : TTrieIterator) : Boolean;
     function LeafSize : Cardinal; virtual;
     procedure InitLeaf(var Leaf); virtual;
     property Items[Index: Integer]: Pointer read GetItem;
+    property TrieDepth : Byte read FTrieDepth;
   public
     constructor Create(ATrieDepth : Byte);
     destructor Destroy; override;
-    procedure Clear;
+    procedure Clear; virtual;
     procedure InitIterator(out AIterator : TTrieIterator);
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property Count : Integer read FCount;
@@ -150,6 +152,7 @@ resourcestring
   STR_RANDOMACCESSENABLEDONLYFORSEQUENTIALACCESS = 'Random access enabled only for sequential access';
   STR_INDEXOUTOFBOUNDS = 'Index out of bounds';
   STR_TRIEDEPTHERROR = 'Only possible values for trie depth are 8 and 16';
+  STR_ITERATORATEND = 'Iterator reached the end of the trie unexpectedly';
 
 { TTrie }
 
@@ -188,7 +191,8 @@ begin
   if Level <= FLastMidBranchNode then
     for i := 0 to ANode^.Base.ChildrenCount - 1 do
       FreeTrieNode(PTrieNodeArray(ANode^.Children)^[i], Level + 1);
-  if (ANode^.Base.ChildrenCount > 0) and (ANode^.Children <> nil) then
+  if (ANode^.Base.ChildrenCount > 0) and (ANode^.Children <> nil) and
+     (Level < FTrieDepth - 1) then
     FreeMem(ANode^.Children);
   FreeMem(ANode);
 end;
@@ -296,16 +300,15 @@ begin
   begin
     FLastIndex := -1;
     InitIterator(FRandomAccessIterator);
-  end
-  else if Index = FLastIndex then
-  begin
-    if FTrieDepth = TrieDepth32Bits then
-      Result := @FRandomAccessIterator.LastResult32
-    else Result := @FRandomAccessIterator.LastResult64;
-    exit;
   end;
+  if FTrieDepth = TrieDepth32Bits then
+    Result := @FRandomAccessIterator.LastResult32
+  else Result := @FRandomAccessIterator.LastResult64;
+  if Index = FLastIndex then
+    exit;
   repeat
-    Result := Next(FRandomAccessIterator);
+    if not Next(FRandomAccessIterator) then
+      raise ETrieRandomAccess.Create(STR_ITERATORATEND);
     inc(FLastIndex);
   until FLastIndex >= Index;
 end;
@@ -385,13 +388,13 @@ begin
   end;
 end;
 
-function TTrie.Next(var AIterator: TTrieIterator): Pointer;
+function TTrie.Next(var AIterator: TTrieIterator): Boolean;
 var
   ATrieDepth : Byte;
 begin
   if AIterator.AtEnd then
   begin
-    Result := nil;
+    Result := False;
     exit;
   end;
   ATrieDepth := FTrieDepth;
@@ -402,27 +405,25 @@ begin
       AIterator.LastResult32 := 0
     else AIterator.LastResult64 := 0;
   end;
-  if ATrieDepth = TrieDepth32Bits then
-    Result := @AIterator.LastResult32
-  else Result := @AIterator.LastResult64;
   repeat
     while AIterator.BreadCrumbs[AIterator.Level] < ChildrenPerBucket do
     begin
       if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], AIterator.BreadCrumbs[AIterator.Level] ) then
       begin
         if ATrieDepth = TrieDepth32Bits then
-          PInteger(Result)^ := PInteger(Result)^ or AIterator.BreadCrumbs[AIterator.Level]
-        else PInt64(Result)^ := PInt64(Result)^ or AIterator.BreadCrumbs[AIterator.Level];
+          AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level]
+        else AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
         inc(AIterator.Level);
         if AIterator.Level >= ATrieDepth then
         begin
           inc(AIterator.BreadCrumbs[AIterator.Level - 1]);
           dec(AIterator.Level);
+          Result := True;
           exit;
         end;
         if ATrieDepth = TrieDepth32Bits then
-          PInteger(Result)^ := PInteger(Result)^ shl BitsForChildIndexPerBucket
-        else PInt64(Result)^ := PInt64(Result)^ shl BitsForChildIndexPerBucket;
+          AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket
+        else AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
         AIterator.ANodeStack[AIterator.Level] := NextNode(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]), AIterator.Level - 1,
                                                           GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]),
                                                           AIterator.BreadCrumbs[AIterator.Level - 1]));
@@ -431,15 +432,13 @@ begin
       else inc(AIterator.BreadCrumbs[AIterator.Level] );
     end;
     if AIterator.BreadCrumbs[AIterator.Level]  >= ChildrenPerBucket then
-      if not IteratorBacktrack(AIterator, Result) then
+      if not IteratorBacktrack(AIterator) then
         break;
   until False;
-  Result := nil;
   AIterator.AtEnd := True;
 end;
 
-function TTrie.IteratorBacktrack(var AIterator: TTrieIterator;
-  var ResultAddr: Pointer): Boolean;
+function TTrie.IteratorBacktrack(var AIterator: TTrieIterator): Boolean;
 begin
   AIterator.BreadCrumbs[AIterator.Level]  := 0;
   dec(AIterator.Level);
@@ -452,13 +451,13 @@ begin
   end;
   if FTrieDepth = TrieDepth32Bits then
   begin
-    PInteger(ResultAddr)^ := PInteger(ResultAddr)^ shr BitsForChildIndexPerBucket;
-    PInteger(ResultAddr)^ := PInteger(ResultAddr)^ and not Integer(BucketMask);
+    AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
+    AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
   end
   else
   begin
-    PInt64(ResultAddr)^ := PInt64(ResultAddr)^ shr BitsForChildIndexPerBucket;
-    PInt64(ResultAddr)^ := PInt64(ResultAddr)^ and not Int64(BucketMask);
+    AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
+    AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
   end;
   Result := True;
 end;

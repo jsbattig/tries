@@ -77,9 +77,9 @@ end;
 
 function TPointerTrie.Next(var AIterator: TTrieIterator): Pointer;
 begin
-  Result := inherited Next(AIterator);
-  if Result <> nil then
-    Result := PPointer(Result)^;
+  if inherited Next(AIterator) then
+    Result := AIterator.LastResultPtr
+  else Result := nil;
 end;
 
 end.
