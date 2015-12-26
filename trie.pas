@@ -155,7 +155,7 @@ resourcestring
   STR_RANDOMACCESSNOTENABLED = 'Random access not enabled';
   STR_RANDOMACCESSENABLEDONLYFORSEQUENTIALACCESS = 'Random access enabled only for sequential access';
   STR_INDEXOUTOFBOUNDS = 'Index out of bounds';
-  STR_TRIEDEPTHERROR = 'Only possible values for trie depth are 8 and 16';
+  STR_TRIEDEPTHERROR = 'Only possible values for trie depth are 4, 8 and 16';
   STR_ITERATORATEND = 'Iterator reached the end of the trie unexpectedly';
 
 { TTrie }
