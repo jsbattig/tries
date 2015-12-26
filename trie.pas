@@ -37,6 +37,7 @@ const
   BucketMask = $F;
   MaxTrieDepth = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
   ChildrenPerBucket = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
+  TrieDepth16Bits = 4;
   TrieDepth32Bits = 8;
   TrieDepth64Bits = 16;
 
@@ -77,8 +78,9 @@ type
     BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;
     ANodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode;
     case Integer of
-      TrieDepth32Bits : (LastResult64 : Int64;);
-      TrieDepth64Bits : (LastResult32 : Integer;);
+      TrieDepth16Bits : (LastResult16 : Word;);
+      TrieDepth32Bits : (LastResult32 : Integer;);
+      TrieDepth64Bits : (LastResult64 : Int64;);
       0               : (LastResultPtr : Pointer;);
   end;
 
@@ -136,6 +138,8 @@ type
 implementation
 
 const
+  ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
+    (12, 8, 4, 0);
   ChildIndexShiftArray32 : array[0..TrieDepth32Bits - 1] of Byte =
     (28, 24, 20, 16, 12, 8, 4, 0);
   ChildIndexShiftArray64 : array[0..TrieDepth64Bits - 1] of Byte =
@@ -161,7 +165,8 @@ begin
   inherited Create;
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
-  if (ATrieDepth <> TrieDepth32Bits) and (ATrieDepth <> TrieDepth64Bits) then
+  if (ATrieDepth <> TrieDepth32Bits) and (ATrieDepth <> TrieDepth64Bits) and
+     (ATrieDepth <> TrieDepth16Bits) then
     raise ETrie.Create(STR_TRIEDEPTHERROR);
   FTrieDepth := ATrieDepth;
   FLastMidBranchNode := FTrieDepth - 3;
@@ -221,9 +226,11 @@ end;
 
 function TTrie.GetBitFieldIndex(const Data; Level: Byte): Byte;
 begin
-  if FTrieDepth = TrieDepth32Bits then
-    Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask
-  else Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
+  case FTrieDepth of
+    TrieDepth16Bits : Result := (Word(Data) shr ChildIndexShiftArray16[Level]) and BucketMask;
+    TrieDepth32Bits : Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask;
+    else Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
+  end;
 end;
 
 function TTrie.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex: Byte
@@ -301,9 +308,7 @@ begin
     FLastIndex := -1;
     InitIterator(FRandomAccessIterator);
   end;
-  if FTrieDepth = TrieDepth32Bits then
-    Result := @FRandomAccessIterator.LastResult32
-  else Result := @FRandomAccessIterator.LastResult64;
+  Result := @FRandomAccessIterator.LastResult64;
   if Index = FLastIndex then
     exit;
   repeat
@@ -379,7 +384,6 @@ begin
   ATrieDepth := FTrieDepth;
   AIterator.AtEnd := False;
   AIterator.Level := 0;
-  AIterator.LastResult32 := 0;
   AIterator.LastResult64 := 0;
   for i := 0 to ATrieDepth - 1 do
   begin
@@ -401,18 +405,18 @@ begin
   if AIterator.Level = 0 then
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
-    if ATrieDepth = TrieDepth32Bits then
-      AIterator.LastResult32 := 0
-    else AIterator.LastResult64 := 0;
+    AIterator.LastResult64 := 0;
   end;
   repeat
     while AIterator.BreadCrumbs[AIterator.Level] < ChildrenPerBucket do
     begin
       if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], AIterator.BreadCrumbs[AIterator.Level] ) then
       begin
-        if ATrieDepth = TrieDepth32Bits then
-          AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level]
-        else AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
+        case ATrieDepth of
+          TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or AIterator.BreadCrumbs[AIterator.Level];
+          TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level];
+          else AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
+        end;
         inc(AIterator.Level);
         if AIterator.Level >= ATrieDepth then
         begin
@@ -421,9 +425,11 @@ begin
           Result := True;
           exit;
         end;
-        if ATrieDepth = TrieDepth32Bits then
-          AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket
-        else AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
+        case ATrieDepth of
+          TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shl BitsForChildIndexPerBucket;
+          TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket;
+          else AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
+        end;
         AIterator.ANodeStack[AIterator.Level] := NextNode(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]), AIterator.Level - 1,
                                                           GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]),
                                                           AIterator.BreadCrumbs[AIterator.Level - 1]));
@@ -449,15 +455,22 @@ begin
     Result := False;
     exit;
   end;
-  if FTrieDepth = TrieDepth32Bits then
-  begin
-    AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
-    AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-  end
-  else
-  begin
-    AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
-    AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+  case FTrieDepth of
+    TrieDepth16Bits :
+    begin
+      AIterator.LastResult16 := AIterator.LastResult16 shr BitsForChildIndexPerBucket;
+      AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
+    end;
+    TrieDepth32Bits :
+    begin
+      AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
+      AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
+    end;
+    else
+    begin
+      AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
+      AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+    end;
   end;
   Result := True;
 end;
