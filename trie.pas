@@ -104,7 +104,6 @@ type
     FTrieDepth : Byte;
     FLastMidBranchNode : Byte;
     function NewTrieBranchNode : PTrieBranchNode;
-    procedure FreeTrieNode(ANode : PTrieBranchNode; Level : Byte);
     function AddChild(ANode : PTrieBranchNode; Level : Byte) : Integer;
     function GetBitFieldIndex(const Data; Level : Byte) : Byte;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
@@ -115,13 +114,17 @@ type
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
     function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
+    procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
+    procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
+    procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
   protected
     procedure Add(const Data);
     function Find(const Data) : Boolean;
     procedure Remove(const Data);
-    function Next(var AIterator : TTrieIterator) : Boolean;
+    function Next(var AIterator : TTrieIterator; ADepth : Byte = 0) : Boolean;
     function LeafSize : Cardinal; virtual;
     procedure InitLeaf(var Leaf); virtual;
+    procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); virtual;
     property Items[Index: Integer]: Pointer read GetItem;
     property TrieDepth : Byte read FTrieDepth;
   public
@@ -129,6 +132,7 @@ type
     destructor Destroy; override;
     procedure Clear; virtual;
     procedure InitIterator(out AIterator : TTrieIterator);
+    procedure Pack;
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property Count : Integer read FCount;
     property RandomAccessMode : TTrieRandomAccessMode read FRandomAccessMode write FRandomAccessMode;
@@ -189,17 +193,18 @@ begin
   inc(FStats.TotalMemAlloced, sizeof(TTrieBranchNode));
 end;
 
-procedure TTrie.FreeTrieNode(ANode: PTrieBranchNode; Level: Byte);
-var
-  i : integer;
+procedure TTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);
 begin
-  if Level <= FLastMidBranchNode then
-    for i := 0 to ANode^.Base.ChildrenCount - 1 do
-      FreeTrieNode(PTrieNodeArray(ANode^.Children)^[i], Level + 1);
-  if (ANode^.Base.ChildrenCount > 0) and (ANode^.Children <> nil) and
-     (Level < FTrieDepth - 1) then
-    FreeMem(ANode^.Children);
-  FreeMem(ANode);
+  if Level in [0..FLastMidBranchNode] then
+    FreeTrieBranchNodeArray(PTrieNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1)
+  else if Level = FLastMidBranchNode + 1 then
+    FreeTrieLeafNodeArray(PTrieLeafNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1);
+  if Level < FTrieDepth - 1 then
+  begin
+    FreeMem(ANode);
+    dec(FStats.TotalMemAlloced, sizeof(TTrieBranchNode));
+    dec(FStats.NodeCount);
+  end;
 end;
 
 function TTrie.AddChild(ANode: PTrieBranchNode; Level: Byte
@@ -324,6 +329,7 @@ begin
   FStats.TotalMemAlloced := 0;
   FStats.NodeCount := 0;
   FCount := 0;
+  FRoot := NewTrieBranchNode();
 end;
 
 procedure TTrie.Add(const Data);
@@ -372,7 +378,7 @@ var
 begin
   if InternalFind(Data, Node, ChildIndex) then
   begin
-    SetBusyIndicator(@Node^.Base, ChildIndex, False);
+    SetBusyIndicator(@Node^.Base, GetBitFieldIndex(Data, FTrieDepth - 1), False);
     dec(FCount);
   end;
 end;
@@ -392,7 +398,71 @@ begin
   end;
 end;
 
-function TTrie.Next(var AIterator: TTrieIterator): Boolean;
+procedure TTrie.Pack;
+var
+  BitFieldIndex, ChildIndex : Integer;
+  AIterator : TTrieIterator;
+  NodePacked : Boolean;
+  ChildrenBackup : array of Pointer;
+  procedure BackupChildren;
+  var
+    i, ChildIndex : Integer;
+  begin
+    for i := low(ChildrenBackup) to high(ChildrenBackup) do
+      ChildrenBackup[i] := nil;
+    for i := 0 to BitFieldIndex - 1 do
+    begin
+      if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], i) then
+      begin
+        ChildIndex := GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level]), i);
+        ChildrenBackup[i] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex];
+      end;
+    end;
+  end;
+begin
+  SetLength(ChildrenBackup, ChildrenPerBucket);
+  InitIterator(AIterator);
+  while Next(AIterator, FTrieDepth - 1) do
+  begin
+    while AIterator.Level >= 0 do
+    begin
+      NodePacked := False;
+      for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
+        if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex) then
+        begin
+          ChildIndex := GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level]), BitFieldIndex);
+          if AIterator.Level = FLastMidBranchNode + 1 then
+            if PTrieLeafNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)])^.Base.Busy = 0 then
+            begin
+              NodePacked := True;
+              SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
+              FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)]^.Base, AIterator.Level + 1);
+              dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
+            end
+            else { keep going, there's busy nodes on Children }
+          else if PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base.Busy = 0 then
+          begin
+            if not NodePacked then
+            begin
+              BackupChildren;
+              NodePacked := True;
+            end;
+            dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
+            SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
+            FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base, AIterator.Level + 1);
+          end
+          else if NodePacked then
+            ChildrenBackup[BitFieldIndex] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex];
+        end;
+      if NodePacked then
+        PackNode(AIterator, ChildrenBackup);
+      dec(AIterator.Level);
+    end;
+    AIterator.Level := 0;
+  end;
+end;
+
+function TTrie.Next(var AIterator: TTrieIterator; ADepth: Byte = 0): Boolean;
 var
   ATrieDepth : Byte;
 begin
@@ -401,7 +471,9 @@ begin
     Result := False;
     exit;
   end;
-  ATrieDepth := FTrieDepth;
+  if ADepth = 0 then
+    ATrieDepth := FTrieDepth
+  else ATrieDepth := ADepth;
   if AIterator.Level = 0 then
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
@@ -473,6 +545,64 @@ begin
     end;
   end;
   Result := True;
+end;
+
+procedure TTrie.PackNode(var AIterator: TTrieIterator;
+  const ChildrenBackup: array of Pointer);
+var
+  j, BitFieldIndex : Integer;
+begin
+  if AIterator.Level <= FLastMidBranchNode then
+  begin
+    if AIterator.ANodeStack[AIterator.Level]^.ChildrenCount > 0 then
+    begin
+      ReallocMem(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children, AIterator.ANodeStack[AIterator.Level]^.ChildrenCount * sizeof(Pointer));
+      j := 0;
+      PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.ChildIndex := 0;
+      for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
+        if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex) then
+        begin
+          PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[j] := ChildrenBackup[BitFieldIndex];
+          SetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level]), BitFieldIndex, j);
+          inc(j);
+        end;
+    end
+    else
+    begin
+      FreeMem(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children);
+      PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children := nil;
+      inc(AIterator.BreadCrumbs[AIterator.Level]);
+    end;
+  end
+  else
+  begin
+    if AIterator.ANodeStack[AIterator.Level]^.ChildrenCount <= 0 then
+    begin
+      FreeMem(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children);
+      PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children := nil;
+    end;
+    inc(AIterator.BreadCrumbs[AIterator.Level]);
+  end;
+end;
+
+procedure TTrie.FreeTrieBranchNodeArray(const Arr: PTrieNodeArray;
+  ChildrenCount, Level: Byte);
+var
+  i : SmallInt;
+begin
+  for i := 0 to ChildrenCount - 1 do
+    FreeTrieNode(@PTrieBranchNode(Arr^[i])^.Base, Level);
+  FreeMem(Arr);
+end;
+
+procedure TTrie.FreeTrieLeafNodeArray(const Arr: PTrieLeafNodeArray;
+  ChildrenCount, Level: Byte);
+var
+  i : Integer;
+begin
+  for i := 0 to ChildrenCount - 1 do
+    FreeTrieNode(@PTrieLeafNode(@Arr^[i * Integer(LeafSize)])^.Base, Level);
+  FreeMem(Arr);
 end;
 
 function TTrie.LeafSize: Cardinal;

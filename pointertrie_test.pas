@@ -53,6 +53,8 @@ type
     procedure TestAddTwoPointersIterateSuccess;
     procedure TestAddALotOfPointersIterateThemAndCheckThem;
     procedure TestRandomAccessSuccess;
+    procedure TestPackSuccess;
+    procedure TestPackStressSuccess;
   end;
 
 implementation
@@ -210,6 +212,72 @@ begin
   for i := low(Pointers) to high(Pointers) do
     if Pointers[i] <> nil then
       FreeMem(Pointers[i]);
+end;
+
+procedure TTestPointerTrie.TestPackSuccess;
+begin
+  FPointerTrie.Add(Pointer($00000001));
+  FPointerTrie.Add(Pointer($00000002));
+  FPointerTrie.Add(Pointer($10000000));
+  FPointerTrie.Pack;
+  Check(FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) not found');
+  Check(FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) not found');
+  Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
+  FPointerTrie.Remove(Pointer($00000001));
+  Check(not FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) found');
+  Check(FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) not found');
+  Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
+  FPointerTrie.Pack;
+  Check(not FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) found');
+  Check(FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) not found');
+  Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
+  FPointerTrie.Remove(Pointer($00000002));
+  FPointerTrie.Pack;
+  Check(not FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) found');
+  Check(not FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) found');
+  Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
+end;
+
+procedure TTestPointerTrie.TestPackStressSuccess;
+var
+  Pointers : array of Pointer;
+  i : integer;
+  p : Pointer;
+  It : TTrieIterator;
+  PointersRemoved, PointersNotRemoved : TList;
+begin
+  SetLength(Pointers, 1024);
+  InternalAddPointers(Pointers);
+  FPointerTrie.InitIterator(It);
+  PointersRemoved := TList.Create;
+  try
+    PointersNotRemoved := TList.Create;
+    try
+      i := 0;
+      repeat
+        p := FPointerTrie.Next(It);
+        if i mod 2 = 0 then
+        begin
+          FPointerTrie.Remove(p);
+          PointersRemoved.Add(p);
+        end
+        else PointersNotRemoved.Add(p);
+        inc(i);
+      until p = nil;
+      FPointerTrie.Pack;
+      CheckEquals(512, FPointerTrie.Count, 'i should be equals to FPointerTrie.Count + 1');
+      for i := 0 to PointersRemoved.Count - 1 do
+        Check(not FPointerTrie.Find(PointersRemoved[i]), 'Pointer should not be found');
+      for i := 0 to PointersNotRemoved.Count - 1 do
+        Check(FPointerTrie.Find(PointersNotRemoved[i]), 'Pointer should be found');
+      for i := low(Pointers) to high(Pointers) do
+        FreeMem(Pointers[i]);
+    finally
+      PointersNotRemoved.Free;
+    end;
+  finally
+    PointersRemoved.Free;
+  end;
 end;
 
 procedure TTestPointerTrie.SetUp;
