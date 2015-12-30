@@ -252,7 +252,8 @@ begin
   case FTrieDepth of
     TrieDepth16Bits : Result := (Word(Data) shr ChildIndexShiftArray16[Level]) and BucketMask;
     TrieDepth32Bits : Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask;
-    else Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
+    TrieDepth64Bits : Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
+    else raise ETrie.Create(STR_TRIEDEPTHERROR);
   end;
 end;
 
@@ -504,9 +505,10 @@ begin
       if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], AIterator.BreadCrumbs[AIterator.Level] ) then
       begin
         case ATrieDepth of
-          TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or AIterator.BreadCrumbs[AIterator.Level];
-          TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level];
-          else AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
+          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or AIterator.BreadCrumbs[AIterator.Level];
+          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level];
+          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
+          else raise ETrie.Create(STR_TRIEDEPTHERROR);
         end;
         inc(AIterator.Level);
         if AIterator.Level >= ATrieDepth then
@@ -517,9 +519,10 @@ begin
           exit;
         end;
         case ATrieDepth of
-          TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shl BitsForChildIndexPerBucket;
-          TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket;
-          else AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
+          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shl BitsForChildIndexPerBucket;
+          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket;
+          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
+          else raise ETrie.Create(STR_TRIEDEPTHERROR);
         end;
         AIterator.ANodeStack[AIterator.Level] := NextNode(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]), AIterator.Level - 1,
                                                           GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level - 1]),
@@ -557,11 +560,12 @@ begin
       AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
       AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
     end;
-    else
+    TrieDepth64Bits :
     begin
       AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
       AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
     end;
+    else raise ETrie.Create(STR_TRIEDEPTHERROR);
   end;
   Result := True;
 end;
