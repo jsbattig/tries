@@ -57,7 +57,7 @@ end;
 
 constructor TPointerTrie.Create;
 begin
-  inherited Create(sizeof(Pointer) * BitsPerByte div BitsForChildIndexPerBucket);
+  inherited Create(TrieDepthPointerSize);
 end;
 
 procedure TPointerTrie.Add(p: Pointer);

@@ -20,6 +20,21 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+  This class provides the basis to construct a Trie based container.
+  On it's basic form it can be used to store 16, 32 and 64 bits based data elements.
+  The structure provides a fixed depth Trie implementation, which in turns renders
+  equal time to Find and Remove nodes, and consistent Add times incurring only in
+  extra overhead when needing the acquire new nodes.
+  To keep node size small, only 16 branches per node will be used and indicator flags
+  and internal pointer indexes are encoded in a 16 bits word and in a 64 bits integer.
+  Pointers to branches are managed dynamically so only an pointer is allocated on the
+  pointers array when a new branch needs to be added, this minimizes waste of
+  pre-allocated pointers array to lower level branches.
+  Leafs are allocated in-place rather than as individual nodes pointed by the last
+  branch node.
+  Finally, Leaf nodes can be dynamically controlled by the derived class from TTrie
+  allowing for easy implementation of dictionaries using TTrie as a base.
 *)
 
 unit Trie;
@@ -32,14 +47,15 @@ uses
   SysUtils;
 
 const
-  BitsPerByte = 8;
+  BitsPerByte                = 8;
   BitsForChildIndexPerBucket = 4;
-  BucketMask = $F;
-  MaxTrieDepth = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
-  ChildrenPerBucket = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
-  TrieDepth16Bits = 4;
-  TrieDepth32Bits = 8;
-  TrieDepth64Bits = 16;
+  BucketMask                 = $F;
+  MaxTrieDepth               = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
+  ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
+  TrieDepth16Bits            = (sizeof(Word) * BitsPerByte) div BitsForChildIndexPerBucket;
+  TrieDepth32Bits            = (sizeof(Integer) * BitsPerByte) div BitsForChildIndexPerBucket;
+  TrieDepth64Bits            = (sizeof(Int64) * BitsPerByte) div BitsForChildIndexPerBucket;
+  TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
 
 type
   PTrieBaseNode = ^TTrieBaseNode;
@@ -78,10 +94,10 @@ type
     BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;
     ANodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode;
     case Integer of
-      TrieDepth16Bits : (LastResult16 : Word;);
-      TrieDepth32Bits : (LastResult32 : Integer;);
-      TrieDepth64Bits : (LastResult64 : Int64;);
-      0               : (LastResultPtr : Pointer;);
+      TrieDepth16Bits      : (LastResult16 : Word;);
+      TrieDepth32Bits      : (LastResult32 : Integer;);
+      TrieDepth64Bits      : (LastResult64 : Int64;);
+      TrieDepthPointerSize : (LastResultPtr : Pointer;);
   end;
 
   { TTrie }
@@ -404,31 +420,31 @@ procedure TTrie.Pack;
 var
   BitFieldIndex, ChildIndex : Integer;
   AIterator : TTrieIterator;
-  NodePacked : Boolean;
-  ChildrenBackup : array of Pointer;
+  PackingNode : Boolean;
+  ChildrenPointersBackup : array of Pointer;
   procedure BackupChildren;
   var
-    i, ChildIndex : Integer;
+    i, _ChildIndex : Integer;
   begin
-    for i := low(ChildrenBackup) to high(ChildrenBackup) do
-      ChildrenBackup[i] := nil;
+    for i := low(ChildrenPointersBackup) to high(ChildrenPointersBackup) do
+      ChildrenPointersBackup[i] := nil;
     for i := 0 to BitFieldIndex - 1 do
     begin
       if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], i) then
       begin
-        ChildIndex := GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level]), i);
-        ChildrenBackup[i] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex];
+        _ChildIndex := GetChildIndex(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level]), i);
+        ChildrenPointersBackup[i] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[_ChildIndex];
       end;
     end;
   end;
 begin
-  SetLength(ChildrenBackup, ChildrenPerBucket);
+  SetLength(ChildrenPointersBackup, ChildrenPerBucket);
   InitIterator(AIterator);
   while Next(AIterator, FTrieDepth - 1) do
   begin
     while AIterator.Level >= 0 do
     begin
-      NodePacked := False;
+      PackingNode := False;
       for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
         if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex) then
         begin
@@ -436,7 +452,7 @@ begin
           if AIterator.Level = FLastMidBranchNode + 1 then
             if PTrieLeafNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)])^.Base.Busy = 0 then
             begin
-              NodePacked := True;
+              PackingNode := True;
               dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
               SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
               FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)]^.Base, AIterator.Level + 1);
@@ -444,21 +460,21 @@ begin
             else { keep going, there's busy nodes on Children }
           else if PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base.Busy = 0 then
           begin
-            if not NodePacked then
+            if not PackingNode then
             begin
               BackupChildren;
-              NodePacked := True;
+              PackingNode := True;
             end;
             dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
             dec(FStats.TotalMemAlloced, sizeof(Pointer));
             SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
             FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base, AIterator.Level + 1);
           end
-          else if NodePacked then
-            ChildrenBackup[BitFieldIndex] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex];
+          else if PackingNode then
+            ChildrenPointersBackup[BitFieldIndex] := PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex];
         end;
-      if NodePacked then
-        PackNode(AIterator, ChildrenBackup);
+      if PackingNode then
+        PackNode(AIterator, ChildrenPointersBackup);
       dec(AIterator.Level);
     end;
     AIterator.Level := 0;
