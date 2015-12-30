@@ -203,8 +203,9 @@ begin
   begin
     FreeMem(ANode);
     dec(FStats.TotalMemAlloced, sizeof(TTrieBranchNode));
-    dec(FStats.NodeCount);
-  end;
+  end
+  else dec(FStats.TotalMemAlloced, LeafSize);
+  dec(FStats.NodeCount);
 end;
 
 function TTrie.AddChild(ANode: PTrieBranchNode; Level: Byte
@@ -224,6 +225,7 @@ begin
   begin
     ReallocArray(ANode^.Children, ANode^.Base.ChildrenCount + 1, LeafSize);
     InitLeaf(PTrieLeafNode(@PTrieLeafNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount * LeafSize])^);
+    inc(FStats.NodeCount);
   end;
   Result := ANode^.Base.ChildrenCount;
   inc(ANode^.Base.ChildrenCount);
@@ -435,9 +437,9 @@ begin
             if PTrieLeafNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)])^.Base.Busy = 0 then
             begin
               NodePacked := True;
+              dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
               SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
               FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)]^.Base, AIterator.Level + 1);
-              dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
             end
             else { keep going, there's busy nodes on Children }
           else if PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base.Busy = 0 then
@@ -448,6 +450,7 @@ begin
               NodePacked := True;
             end;
             dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
+            dec(FStats.TotalMemAlloced, sizeof(Pointer));
             SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
             FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base, AIterator.Level + 1);
           end
