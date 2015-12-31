@@ -28,7 +28,7 @@ program Test_PointerContainer;
 
 uses
   Interfaces, Forms, GuiTestRunner, PointerTrie,
-  PointerTrie_Test, Trie;
+  PointerTrie_Test, Trie, Hash_Trie, uSuperFastHash;
 
 {$R *.res}
 

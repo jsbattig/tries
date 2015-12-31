@@ -90,7 +90,7 @@
         <PackageName Value="FCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="4">
+    <Units Count="6">
       <Unit0>
         <Filename Value="Test_PointerContainer.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -110,6 +110,16 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="Trie"/>
       </Unit3>
+      <Unit4>
+        <Filename Value="hash_trie.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Hash_Trie"/>
+      </Unit4>
+      <Unit5>
+        <Filename Value="usuperfasthash.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="uSuperFastHash"/>
+      </Unit5>
     </Units>
   </ProjectOptions>
   <CompilerOptions>

@@ -121,7 +121,6 @@ type
     FLastMidBranchNode : Byte;
     function NewTrieBranchNode : PTrieBranchNode;
     function AddChild(ANode : PTrieBranchNode; Level : Byte) : Integer;
-    function GetBitFieldIndex(const Data; Level : Byte) : Byte;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); inline;
     function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte) : Boolean; inline;
@@ -134,6 +133,7 @@ type
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
   protected
+    function GetBitFieldIndex(const Data; Level : Byte) : Byte;
     procedure Add(const Data);
     function Find(const Data) : Boolean;
     procedure Remove(const Data);
@@ -143,15 +143,15 @@ type
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); virtual;
     property Items[Index: Integer]: Pointer read GetItem;
     property TrieDepth : Byte read FTrieDepth;
+    property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
+    property RandomAccessMode : TTrieRandomAccessMode read FRandomAccessMode write FRandomAccessMode;
   public
     constructor Create(ATrieDepth : Byte);
     destructor Destroy; override;
     procedure Clear; virtual;
     procedure InitIterator(out AIterator : TTrieIterator);
     procedure Pack;
-    property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property Count : Integer read FCount;
-    property RandomAccessMode : TTrieRandomAccessMode read FRandomAccessMode write FRandomAccessMode;
     property Stats : TTrieStats read FStats;
   end;
 

@@ -44,6 +44,8 @@ type
     procedure Remove(p : Pointer);
     function Next(var AIterator : TTrieIterator) : Pointer;
     property Items[Index: Integer]: Pointer read GetItem; default;
+    property AllowDuplicates;
+    property RandomAccessMode;
   end;
 
 implementation
