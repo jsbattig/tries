@@ -5,7 +5,7 @@ unit Test_IntegerHashTrie;
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testutils, testregistry;
+  Classes, SysUtils, fpcunit, testregistry;
 
 type
   TIntegerHashTrieTest= class(TTestCase)
