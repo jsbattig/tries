@@ -114,7 +114,6 @@ type
     FRoot : PTrieBranchNode;
     FAllowDuplicates : Boolean;
     FStats : TTrieStats;
-    FCount : Integer;
     FRandomAccessIterator : TTrieIterator;
     FLastIndex : Integer;
     FTrieDepth : Byte;
@@ -130,11 +129,12 @@ type
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
   protected
+    FCount : Integer;
     function InternalFind(const Data; out ANode : PTrieLeafNode; out AChildIndex : Byte) : Boolean;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); inline;
     function GetBitFieldIndex(const Data; Level : Byte) : Byte;
-    function Add(const Data; out Node : PTrieLeafNode) : Boolean;
+    function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean;
     function Find(const Data) : Boolean;
     procedure Remove(const Data);
     function Next(var AIterator : TTrieIterator; ADepth : Byte = 0) : Boolean;
@@ -363,7 +363,8 @@ begin
   FRoot := NewTrieBranchNode();
 end;
 
-function TTrie.Add(const Data; out Node: PTrieLeafNode): Boolean;
+function TTrie.Add(const Data; out Node: PTrieLeafNode; out WasBusy: Boolean
+  ): Boolean;
 var
   i, BitFieldIndex, ChildIndex, ATrieDepth : Byte;
   CurNode : PTrieBaseNode;
@@ -389,13 +390,15 @@ begin
       else ChildIndex := GetChildIndex(PTrieBranchNode(CurNode), BitFieldIndex)
     else
     begin
+      WasBusy := GetBusyIndicator(CurNode, BitFieldIndex);
       SetBusyIndicator(CurNode, BitFieldIndex, True);
       Node := PTrieLeafNode(CurNode);
       break;
     end;
     CurNode := NextNode(PTrieBranchNode(CurNode), i, ChildIndex);
   end;
-  inc(FCount);
+  if not WasBusy then
+    inc(FCount);
 end;
 
 function TTrie.Find(const Data): Boolean;
@@ -514,6 +517,16 @@ begin
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
     AIterator.LastResult64 := 0;
+  end
+  else
+  begin
+    // We need to clean the lowest four bits when re-entering Next()
+    case FTrieDepth of
+      TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
+      TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
+      TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+      else RaiseTrieDepthError;
+    end;
   end;
   repeat
     while AIterator.BreadCrumbs[AIterator.Level] < ChildrenPerBucket do
@@ -529,8 +542,8 @@ begin
         inc(AIterator.Level);
         if AIterator.Level >= ATrieDepth then
         begin
-          inc(AIterator.BreadCrumbs[AIterator.Level - 1]);
           dec(AIterator.Level);
+          inc(AIterator.BreadCrumbs[AIterator.Level]);
           Result := True;
           exit;
         end;

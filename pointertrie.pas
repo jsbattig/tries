@@ -65,8 +65,9 @@ end;
 procedure TPointerTrie.Add(p: Pointer);
 var
   Dummy : PTrieLeafNode;
+  DummyWasBusy : Boolean;
 begin
-  inherited Add(p, Dummy);
+  inherited Add(p, Dummy, DummyWasBusy);
 end;
 
 function TPointerTrie.Find(p: Pointer): Boolean;

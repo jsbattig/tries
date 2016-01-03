@@ -147,30 +147,39 @@ var
   Node : PHashTrieNode;
   Hash : THashRecord;
   kvpNode : PKeyValuePairNode;
-  Added : Boolean;
+  WasNodeBusy : Boolean;
   ChildIndex : Byte;
 begin
   CalcHash(Hash, kvp^.Key);
-  Added := inherited Add(Hash, PTrieLeafNode(Node));
-  if Added then
+  inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
+  if not WasNodeBusy then
   begin
     ChildIndex := Node^.Base.ChildrenCount;
-    ReallocMem(Node^.Children, (Node^.Base.ChildrenCount + 1) * sizeof(Pointer));
-    PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
     inc(Node^.Base.ChildrenCount);
+    SetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1), ChildIndex);
+    ReallocMem(Node^.Children, Node^.Base.ChildrenCount * sizeof(Pointer));
+    PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
   end
-  else ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
+  else
+  begin
+    ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
+    inc(FCount);
+  end;
   if not FAllowDuplicates then
   begin
     kvpNode := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
     while kvpNode <> nil do
     begin
       if CompareKeys(kvpNode^.KVP.Key, kvp^.Key) then
+      begin
+        if WasNodeBusy then
+          dec(FCount); // Rollback prior addition of FCount
         RaiseDuplicateKeysNotAllowed;
+      end;
       kvpNode := kvpNode^.Next;
     end;
   end;
-  GetMem(kvpNode, sizeof(PKeyValuePairNode));
+  GetMem(kvpNode, sizeof(TKeyValuePairNode));
   kvpNode^.KVP.Key := kvp^.Key;
   kvpNode^.KVP.Value := kvp^.Value;
   kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
@@ -251,12 +260,7 @@ begin
   repeat
     if inherited Next(AIterator.Base) then
     begin
-      case FHashSize of
-        hs16 : ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult16, TrieDepth - 1);
-        hs32 : ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult32, TrieDepth - 1);
-        hs64 : ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
-        else RaiseTrieDepthError;
-      end;
+      ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
       AChildIndex := GetChildIndex(PTrieBranchNode(AIterator.Base.ANodeStack[TrieDepth - 1]), ABitFieldIndex);
       AIterator.ChildNode := PHashTrieNodeArray(PHashTrieNode(AIterator.Base.ANodeStack[TrieDepth - 1])^.Children)^[AChildIndex];
       if AIterator.ChildNode = nil then

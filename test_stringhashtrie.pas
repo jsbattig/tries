@@ -19,6 +19,8 @@ type
   published
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddAndFindManyEntries;
+    procedure TestAddAndIterateManyEntries;
     procedure TestAddDuplicateAndFind;
     procedure TestAddDuplicatesFailure;
     procedure TestAddAndFindHash16;
@@ -47,6 +49,60 @@ begin
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+end;
+
+procedure TStringHashTrieTest.TestAddAndFindManyEntries;
+const
+  Count = 1024 * 64;
+var
+  List : TStringList;
+  i : integer;
+  AIterator : THashTrieIterator;
+  AKey : String;
+  AValue : Pointer;
+begin
+  List := TStringList.Create;
+  try
+    for i := 0 to Count - 1 do
+    begin
+      List.Add(IntToStr(i) + 'hello ' + IntToStr(Count - i));
+      FStrHashTrie.Add(List[i], {%H-}Pointer(i));
+    end;
+    CheckEquals(Count, FStrHashTrie.Count, 'Count doesn''t match');
+    List.Sorted := True;
+    FStrHashTrie.InitIterator(AIterator);
+    while FStrHashTrie.Next(AIterator, AKey, AValue) do
+    begin
+      i := List.IndexOf(AKey);
+      if i = -1 then
+        CheckEquals('', AKey);
+      CheckNotEquals(-1, i, 'Key not found in original list');
+      CheckEquals(IntToStr({%H-}NativeInt(AValue)) + 'hello ' + IntToStr(Count - {%H-}NativeInt(AValue)), AKey, 'Expected key value doesn''t match');
+      List.Delete(i);
+    end;
+    if List.Count > 0 then
+      CheckEquals('', List.CommaText);
+  finally
+    List.Free;
+  end;
+end;
+
+procedure TStringHashTrieTest.TestAddAndIterateManyEntries;
+const
+  Count = 1024 * 256;
+var
+  i, Cnt : integer;
+  AIterator : THashTrieIterator;
+  AKey : String;
+  AValue : Pointer;
+begin
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Add(IntToStr(i) + 'hello', Self);
+  FStrHashTrie.InitIterator(AIterator);
+  Cnt := 0;
+  while FStrHashTrie.Next(AIterator, AKey, AValue) do
+    inc(Cnt);
+  CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
 procedure TStringHashTrieTest.TestAddDuplicateAndFind;

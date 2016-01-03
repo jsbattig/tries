@@ -90,7 +90,8 @@ begin
   kvp := inherited Find(PChar(key), HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
-    Value := kvp^.Value;
+    Value := kvp^.Value
+  else Value := nil;
 end;
 
 function TStringHashTrie.Remove(const key: String): Boolean;
