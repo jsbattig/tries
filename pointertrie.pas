@@ -63,8 +63,10 @@ begin
 end;
 
 procedure TPointerTrie.Add(p: Pointer);
+var
+  Dummy : PTrieLeafNode;
 begin
-  inherited Add(p);
+  inherited Add(p, Dummy);
 end;
 
 function TPointerTrie.Find(p: Pointer): Boolean;
