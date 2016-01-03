@@ -38,12 +38,16 @@ type
       hs64 : (Hash64 : Int64);
   end;
 
+  TAutoFreeMode = (afmFree, afmFreeMem);
+
   { THashTrie }
 
   THashTrie = class(TTrie)
   private
     FHashSize : THashSize;
     FAllowDuplicates : Boolean;
+    FAutoFreeValue : Boolean;
+    FAutoFreeValueMode : TAutoFreeMode;
     procedure CalcHash(out Hash : THashRecord; key : Pointer);
   protected
     function LeafSize : Cardinal; override;
@@ -63,6 +67,8 @@ type
     constructor Create(HashSize : THashSize);
     procedure InitIterator(out AIterator : THashTrieIterator);
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
+    property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
+    property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
 
 implementation
@@ -107,6 +113,10 @@ end;
 
 procedure THashTrie.FreeValue(value: Pointer);
 begin
+  if FAutoFreeValue then
+    if FAutoFreeValueMode = afmFree then
+      TObject(value).Free
+    else FreeMem(value);
 end;
 
 procedure THashTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);

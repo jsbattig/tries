@@ -9,26 +9,19 @@ uses
 
 type
   { TStringHashTrie }
-  TAutoFreeMode = (afmFree, afmFreeMem);
   TStringHashTrie = class(THashTrie)
-  private
-    FAutoFreeValue : Boolean;
-    FAutoFreeValueMode : TAutoFreeMode;
   protected
     function CompareKeys(key1, key2 : Pointer) : Boolean; override;
     function Hash32(key : Pointer) : DWORD; override;
     function Hash16(key : Pointer) : Word; override;
     function Hash64(key : Pointer) : Int64; override;
     procedure FreeKey({%H-}key : Pointer); override;
-    procedure FreeValue({%H-}value : Pointer); override;
   public
     constructor Create(HashSize : THashSize = hs32);
     procedure Add(const key : String; Value : Pointer);
     function Find(const key : String; out Value : Pointer) : Boolean;
     function Remove(const key : String) : Boolean;
     function Next(var AIterator : THashTrieIterator; out key : String; out Value : Pointer) : Boolean;
-    property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
-    property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
 
 implementation
@@ -77,14 +70,6 @@ end;
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
   FreeMem(key);
-end;
-
-procedure TStringHashTrie.FreeValue(value: Pointer);
-begin
-  if FAutoFreeValue then
-    if FAutoFreeValueMode = afmFree then
-      TObject(value).Free
-    else FreeMem(value);
 end;
 
 procedure TStringHashTrie.Add(const key: String; Value: Pointer);
