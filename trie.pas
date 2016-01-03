@@ -113,7 +113,6 @@ type
     FRandomAccessMode: TTrieRandomAccessMode;
     FRoot : PTrieBranchNode;
     FAllowDuplicates : Boolean;
-    FStats : TTrieStats;
     FRandomAccessIterator : TTrieIterator;
     FLastIndex : Integer;
     FTrieDepth : Byte;
@@ -129,6 +128,7 @@ type
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
   protected
+    FStats : TTrieStats;
     FCount : Integer;
     function InternalFind(const Data; out ANode : PTrieLeafNode; out AChildIndex : Byte) : Boolean;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;

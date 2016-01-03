@@ -90,7 +90,7 @@
         <PackageName Value="FCL"/>
       </Item3>
     </RequiredPackages>
-    <Units Count="9">
+    <Units Count="10">
       <Unit0>
         <Filename Value="Test_PointerContainer.lpr"/>
         <IsPartOfProject Value="True"/>
@@ -135,6 +135,11 @@
         <IsPartOfProject Value="True"/>
         <UnitName Value="IntegerHashTrie"/>
       </Unit8>
+      <Unit9>
+        <Filename Value="test_integerhashtrie.pas"/>
+        <IsPartOfProject Value="True"/>
+        <UnitName Value="Test_IntegerHashTrie"/>
+      </Unit9>
     </Units>
   </ProjectOptions>
   <CompilerOptions>
