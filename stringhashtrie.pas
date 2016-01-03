@@ -17,7 +17,7 @@ type
     function Hash64(key : Pointer) : Int64; override;
     procedure FreeKey({%H-}key : Pointer); override;
   public
-    constructor Create(HashSize : THashSize = hs32);
+    constructor Create(AHashSize : THashSize = hs32);
     procedure Add(const key : String; Value : Pointer);
     function Find(const key : String; out Value : Pointer) : Boolean;
     function Remove(const key : String) : Boolean;
@@ -31,9 +31,9 @@ uses
 
 { TStringHashTrie }
 
-constructor TStringHashTrie.Create(HashSize: THashSize);
+constructor TStringHashTrie.Create(AHashSize: THashSize);
 begin
-  inherited Create(HashSize);
+  inherited Create(AHashSize);
 end;
 
 function TStringHashTrie.CompareKeys(key1, key2: Pointer): Boolean;

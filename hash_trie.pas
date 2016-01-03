@@ -63,8 +63,9 @@ type
     function Find(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte) : PKeyValuePair;
     function Remove(key : Pointer) : Boolean;
     function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
+    property HashSize : THashSize read FHashSize;
   public
-    constructor Create(HashSize : THashSize);
+    constructor Create(AHashSize : THashSize);
     procedure InitIterator(out AIterator : THashTrieIterator);
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
@@ -75,13 +76,13 @@ implementation
 
 { THashTrie }
 
-constructor THashTrie.Create(HashSize: THashSize);
+constructor THashTrie.Create(AHashSize: THashSize);
 const
   HashSizeToTrieDepth : array[hs16..hs64] of Byte = (4, 8, 16);
 begin
-  inherited Create(HashSizeToTrieDepth[HashSize]);
+  inherited Create(HashSizeToTrieDepth[AHashSize]);
   inherited AllowDuplicates := True;
-  FHashSize := HashSize;
+  FHashSize := AHashSize;
   FAllowDuplicates := True;
 end;
 
