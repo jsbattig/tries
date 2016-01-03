@@ -521,10 +521,10 @@ begin
   else
   begin
     // We need to clean the lowest four bits when re-entering Next()
-    case FTrieDepth of
-      TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
-      TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-      TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+    case ATrieDepth of
+      1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
+      TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
+      TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
       else RaiseTrieDepthError;
     end;
   end;
