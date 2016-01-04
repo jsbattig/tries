@@ -101,44 +101,43 @@
         <UnitName Value="PointerTrie"/>
       </Unit1>
       <Unit2>
-        <Filename Value="pointertrie_test.pas"/>
-        <IsPartOfProject Value="True"/>
-        <UnitName Value="PointerTrie_Test"/>
-      </Unit2>
-      <Unit3>
         <Filename Value="trie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Trie"/>
-      </Unit3>
-      <Unit4>
+      </Unit2>
+      <Unit3>
         <Filename Value="hash_trie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Hash_Trie"/>
-      </Unit4>
-      <Unit5>
+      </Unit3>
+      <Unit4>
         <Filename Value="usuperfasthash.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="uSuperFastHash"/>
-      </Unit5>
-      <Unit6>
+      </Unit4>
+      <Unit5>
         <Filename Value="stringhashtrie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="StringHashTrie"/>
-      </Unit6>
-      <Unit7>
+      </Unit5>
+      <Unit6>
         <Filename Value="test_stringhashtrie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Test_StringHashTrie"/>
-      </Unit7>
-      <Unit8>
+      </Unit6>
+      <Unit7>
         <Filename Value="integerhashtrie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="IntegerHashTrie"/>
-      </Unit8>
-      <Unit9>
+      </Unit7>
+      <Unit8>
         <Filename Value="test_integerhashtrie.pas"/>
         <IsPartOfProject Value="True"/>
         <UnitName Value="Test_IntegerHashTrie"/>
+      </Unit8>
+      <Unit9>
+        <Filename Value="test_pointertrie.pas"/>
+        <IsPartOfProject Value="True"/>
       </Unit9>
     </Units>
   </ProjectOptions>
