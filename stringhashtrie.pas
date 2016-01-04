@@ -7,7 +7,7 @@ unit StringHashTrie;
 interface
 
 uses
-  Hash_Trie {$IFDEF FPC}, Strings {$ELSE} ,AnsiStrings {$ENDIF};
+  Hash_Trie {$IFDEF FPC}, Strings {$ELSE} {$IFNDEF VER180},AnsiStrings {$ENDIF}{$ENDIF};
 
 type
   { TStringHashTrie }
@@ -30,7 +30,7 @@ type
 implementation
 
 uses
-  uSuperFastHash;
+  uSuperFastHash {$IFDEF VER180} ,SysUtils {$ENDIF};
 
 { TStringHashTrie }
 

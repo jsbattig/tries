@@ -11,7 +11,7 @@ uses
   {$IFDEF FPC}
   fpcunit, testregistry,
   {$ELSE}
-  TestFramework, AnsiStrings,
+  TestFramework, {$IFNDEF VER180} AnsiStrings, {$ENDIF}
   {$ENDIF}
   StringHashTrie;
 
