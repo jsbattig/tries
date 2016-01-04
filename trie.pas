@@ -60,6 +60,8 @@ const
   TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
 
 type
+  _Int64 = {$IFDEF FPC}Int64{$ELSE} UInt64 {$ENDIF};
+
   PTrieBaseNode = ^TTrieBaseNode;
   TTrieBaseNode = record
     ChildrenCount : Word;
@@ -96,9 +98,9 @@ type
     BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;
     ANodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode;
     case Integer of
-      TrieDepth16Bits      : (LastResult16 : Word;);
-      TrieDepth32Bits      : (LastResult32 : Integer;);
-      TrieDepth64Bits      : (LastResult64 : Int64;);
+      TrieDepth16Bits       : (LastResult16 : Word;);
+      TrieDepth32Bits       : (LastResult32 : Integer;);
+      TrieDepth64Bits       : (LastResult64 : _Int64;);
       -TrieDepthPointerSize : (LastResultPtr : Pointer;);
   end;
 
@@ -161,9 +163,6 @@ type
 
 implementation
 
-type
-  TTrieInt64ChildIndexMask = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
-
 const
   ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
     (12, 8, 4, 0);
@@ -171,7 +170,7 @@ const
     (28, 24, 20, 16, 12, 8, 4, 0);
   ChildIndexShiftArray64 : array[0..TrieDepth64Bits - 1] of Byte =
     (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0);
-  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of TTrieInt64ChildIndexMask =
+  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of _Int64 =
     ($FFFFFFFFFFFFFFF0, $FFFFFFFFFFFFFF0F, $FFFFFFFFFFFFF0FF, $FFFFFFFFFFFF0FFF,
      $FFFFFFFFFFF0FFFF, $FFFFFFFFFF0FFFFF, $FFFFFFFFF0FFFFFF, $FFFFFFFF0FFFFFFF,
      $FFFFFFF0FFFFFFFF, $FFFFFF0FFFFFFFFF, $FFFFF0FFFFFFFFFF, $FFFF0FFFFFFFFFFF,
@@ -287,7 +286,7 @@ procedure TTrie.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
   ChildIndex: Byte);
 begin
   ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask[BitFieldIndex];
-  ANode^.ChildIndex := ANode^.ChildIndex or (Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+  ANode^.ChildIndex := ANode^.ChildIndex or (_Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
 end;
 
 function TTrie.GetBusyIndicator(ANode: PTrieBaseNode;
@@ -352,7 +351,13 @@ begin
     FLastIndex := -1;
     InitIterator(FRandomAccessIterator);
   end;
+  {$IFDEF VER180}
+  if FTrieDepth > TrieDepth32Bits then
+    Result := @FRandomAccessIterator.LastResult64
+  else Result := @FRandomAccessIterator.LastResult32;
+  {$ELSE}
   Result := @FRandomAccessIterator.LastResult64;
+  {$ENDIF}
   if Index = FLastIndex then
     exit;
   repeat
@@ -440,6 +445,9 @@ begin
   AIterator.AtEnd := False;
   AIterator.Level := 0;
   AIterator.LastResult64 := 0;
+  {$IFDEF VER180}
+  AIterator.LastResult32 := 0;
+  {$ENDIF}
   for i := 0 to ATrieDepth - 1 do
   begin
     AIterator.BreadCrumbs[i] := 0;
@@ -527,7 +535,17 @@ begin
   if AIterator.Level = 0 then
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
+    {$IFDEF VER180}
+    { Delphi 2007 compiler places the start of Int64 at a different address than
+      the 32 bits counterpart on the union... Go figure.. FreePascal and higher
+      versions of Delphi behave consistently placing all elements on the same
+      starting address }
+    if ATrieDepth > TrieDepth32Bits then
+      AIterator.LastResult64 := 0
+    else AIterator.LastResult32 := 0;
+    {$ELSE}
     AIterator.LastResult64 := 0;
+    {$ENDIF}
   end
   else
   begin
@@ -535,7 +553,7 @@ begin
     case ATrieDepth of
       1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
       TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-      TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+      TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
       else RaiseTrieDepthError;
     end;
   end;
@@ -604,7 +622,7 @@ begin
     TrieDepth64Bits :
     begin
       AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
-      AIterator.LastResult64 := AIterator.LastResult64 and not Int64(BucketMask);
+      AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
     end;
     else RaiseTrieDepthError;
   end;
