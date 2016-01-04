@@ -60,7 +60,7 @@ const
   TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
 
 type
-  _Int64 = {$IFDEF FPC}Int64{$ELSE} UInt64 {$ENDIF};
+  _Int64 = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
 
   PTrieBaseNode = ^TTrieBaseNode;
   TTrieBaseNode = record

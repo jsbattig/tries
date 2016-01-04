@@ -22,12 +22,12 @@ uses
   hash_trie in 'hash_trie.pas',
   integerhashtrie in 'integerhashtrie.pas',
   pointertrie in 'pointertrie.pas',
-  pointertrie_test in 'pointertrie_test.pas',
   stringhashtrie in 'stringhashtrie.pas',
   test_integerhashtrie in 'test_integerhashtrie.pas',
   test_stringhashtrie in 'test_stringhashtrie.pas',
   trie in 'trie.pas',
-  usuperfasthash in 'usuperfasthash.pas';
+  usuperfasthash in 'usuperfasthash.pas',
+  test_pointertrie in 'test_pointertrie.pas';
 
 {$R *.RES}
 

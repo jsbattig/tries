@@ -17,3 +17,5 @@
 /intermediate/
 *.dproj.local
 *.stat
+*.identcache
+*.dsk

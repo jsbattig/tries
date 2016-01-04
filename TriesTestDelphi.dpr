@@ -16,7 +16,7 @@ program TriesTestDelphi;
 
 uses
   DUnitTestRunner,
-  pointertrie_test in 'pointertrie_test.pas',
+  test_pointertrie in 'test_pointertrie.pas',
   test_integerhashtrie in 'test_integerhashtrie.pas',
   test_stringhashtrie in 'test_stringhashtrie.pas',
   hash_trie in 'hash_trie.pas',
