@@ -1,6 +1,8 @@
 unit IntegerHashTrie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
@@ -12,7 +14,7 @@ type
   TIntegerHashTrie = class(THashTrie)
   protected
     function CompareKeys(key1, key2 : Pointer) : Boolean; override;
-    function Hash32(key : Pointer) : DWORD; override;
+    function Hash32(key : Pointer): Cardinal; override;
     function Hash16(key : Pointer) : Word; override;
     function Hash64(key : Pointer) : Int64; override;
     procedure FreeKey(key : Pointer); override;
@@ -43,6 +45,9 @@ end;
 
 function TIntegerHashTrie.CompareKeys(key1, key2: Pointer): Boolean;
 begin
+  {$IFNDEF FPC}
+  Result := False;
+  {$ENDIF}
   case HashSize of
     hs16 : Result := PWord(key1)^ = PWord(key2)^;
     hs32 : Result := PCardinal(key1)^ = PCardinal(key2)^;
@@ -51,7 +56,7 @@ begin
   end;
 end;
 
-function TIntegerHashTrie.Hash32(key: Pointer): DWORD;
+function TIntegerHashTrie.Hash32(key : Pointer): Cardinal;
 begin
   Result := {%H-}Cardinal(key);
 end;

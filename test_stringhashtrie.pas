@@ -1,11 +1,19 @@
 unit Test_StringHashTrie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, StringHashTrie;
+  Classes, SysUtils,
+  {$IFDEF FPC}
+  fpcunit, testregistry,
+  {$ELSE}
+  TestFramework, AnsiStrings,
+  {$ENDIF}
+  StringHashTrie;
 
 type
   { TStringHashTrieTest }
@@ -58,7 +66,7 @@ var
   List : TStringList;
   i : integer;
   AIterator : THashTrieIterator;
-  AKey : String;
+  AKey : AnsiString;
   AValue : Pointer;
 begin
   List := TStringList.Create;
@@ -66,7 +74,7 @@ begin
     for i := 0 to Count - 1 do
     begin
       List.Add(IntToStr(i) + 'hello ' + IntToStr(Count - i));
-      FStrHashTrie.Add(List[i], {%H-}Pointer(i));
+      FStrHashTrie.Add(AnsiString(List[i]), {%H-}Pointer(i));
     end;
     CheckEquals(Count, FStrHashTrie.Count, 'Count doesn''t match');
     List.Sorted := True;
@@ -93,11 +101,11 @@ const
 var
   i, Cnt : integer;
   AIterator : THashTrieIterator;
-  AKey : String;
+  AKey : AnsiString;
   AValue : Pointer;
 begin
   for i := 0 to Count - 1 do
-    FStrHashTrie.Add(IntToStr(i) + 'hello', Self);
+    FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
   FStrHashTrie.InitIterator(AIterator);
   Cnt := 0;
   while FStrHashTrie.Next(AIterator, AKey, AValue) do
@@ -166,7 +174,7 @@ end;
 procedure TStringHashTrieTest.TestIterator;
 var
   AIterator : THashTrieIterator;
-  AKey : String;
+  AKey : AnsiString;
   AValue : Pointer;
 begin
   FStrHashTrie.Add('Hello World', Self);
@@ -180,7 +188,7 @@ end;
 procedure TStringHashTrieTest.TestIteratorDuplicateString;
 var
   AIterator : THashTrieIterator;
-  AKey : String;
+  AKey : AnsiString;
   AValue : Pointer;
 begin
   FStrHashTrie.Add('Hello World', Self);
@@ -212,7 +220,7 @@ end;
 procedure TStringHashTrieTest.TestAddTwoValuesAndIterate;
 var
   AIterator : THashTrieIterator;
-  AKey : String;
+  AKey : AnsiString;
   AValue : Pointer;
 begin
   FStrHashTrie.Add('Hello World', Self);
@@ -236,7 +244,10 @@ begin
 end;
 
 initialization
-
+  {$IFDEF FPC}
   RegisterTest(TStringHashTrieTest);
+  {$ELSE}
+  RegisterTest(TStringHashTrieTest.Suite);
+  {$ENDIF}
 end.
 

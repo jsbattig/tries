@@ -16,3 +16,4 @@
 /bin/
 /intermediate/
 *.dproj.local
+*.stat

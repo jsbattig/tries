@@ -266,6 +266,9 @@ end;
 
 function TTrie.GetBitFieldIndex(const Data; Level: Byte): Byte;
 begin
+  {$IFNDEF FPC}
+  Result := 0;
+  {$ENDIF}
   case FTrieDepth of
     TrieDepth16Bits : Result := (Word(Data) shr ChildIndexShiftArray16[Level]) and BucketMask;
     TrieDepth32Bits : Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask;
@@ -374,6 +377,9 @@ var
   i, BitFieldIndex, ChildIndex, ATrieDepth : Byte;
   CurNode : PTrieBaseNode;
 begin
+  {$IFNDEF FPC}
+  ChildIndex := 0;
+  {$ENDIF}
   Result := False;
   CurNode := @FRoot^.Base;
   ATrieDepth := FTrieDepth;
@@ -539,7 +545,7 @@ begin
       if GetBusyIndicator(AIterator.ANodeStack[AIterator.Level], AIterator.BreadCrumbs[AIterator.Level] ) then
       begin
         case ATrieDepth of
-          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or AIterator.BreadCrumbs[AIterator.Level];
+          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or Word(AIterator.BreadCrumbs[AIterator.Level]);
           TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level];
           TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
           else RaiseTrieDepthError;

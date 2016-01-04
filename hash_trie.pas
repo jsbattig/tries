@@ -1,6 +1,8 @@
 unit Hash_Trie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
@@ -57,7 +59,7 @@ type
     function CompareKeys(key1, key2 : Pointer) : Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); override;
     function Hash16(key : Pointer) : Word; virtual; abstract;
-    function Hash32(key : Pointer) : DWORD; virtual; abstract;
+    function Hash32(key : Pointer): Cardinal; virtual; abstract;
     function Hash64(key : Pointer) : Int64; virtual; abstract;
     procedure Add(kvp : PKeyValuePair);
     function Find(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte) : PKeyValuePair;
@@ -219,6 +221,7 @@ var
   PrevNode, ListNode : PKeyValuePairNode;
   HashTrieNode : PHashTrieNode;
 begin
+  Result := False;
   kvp := Find(key, HashTrieNode, AChildIndex);
   if kvp = nil then
     exit;
@@ -239,7 +242,6 @@ begin
     end;
     ListNode := ListNode^.Next;
   end;
-  Result := False;
 end;
 
 procedure THashTrie.InitIterator(out AIterator: THashTrieIterator);

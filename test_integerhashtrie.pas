@@ -1,11 +1,18 @@
 unit Test_IntegerHashTrie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry;
+  Classes,
+  {$IFDEF FPC}
+  fpcunit, testregistry,
+  {$ELSE}
+  TestFramework,
+  {$ENDIF} SysUtils;
 
 type
   TIntegerHashTrieTest= class(TTestCase)
@@ -34,7 +41,10 @@ begin
 end;
 
 initialization
-
+  {$IFDEF FPC}
   RegisterTest(TIntegerHashTrieTest);
+  {$ELSE}
+  RegisterTest(TIntegerHashTrieTest.Suite);
+  {$ENDIF}
 end.
 

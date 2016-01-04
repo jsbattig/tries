@@ -1,14 +1,16 @@
 unit uSuperFastHash;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal): DWORD;
+function SuperFastHash(data: PAnsiChar; Len: Cardinal): Cardinal;
 
 implementation
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal): DWORD;
+function SuperFastHash(data: PAnsiChar; Len: Cardinal): Cardinal;
 var
   tmp : Cardinal;
   rem : integer;
