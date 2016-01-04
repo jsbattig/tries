@@ -564,8 +564,8 @@ begin
       begin
         case ATrieDepth of
           1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or Word(AIterator.BreadCrumbs[AIterator.Level]);
-          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or AIterator.BreadCrumbs[AIterator.Level];
-          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 or AIterator.BreadCrumbs[AIterator.Level];
+          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or Integer(AIterator.BreadCrumbs[AIterator.Level]);
+          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 or _Int64(AIterator.BreadCrumbs[AIterator.Level]);
           else RaiseTrieDepthError;
         end;
         inc(AIterator.Level);
