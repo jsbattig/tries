@@ -12,3 +12,7 @@
 *.or
 *.res
 *.lps
+/__history/
+/bin/
+/intermediate/
+*.dproj.local

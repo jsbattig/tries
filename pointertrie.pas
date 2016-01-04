@@ -24,7 +24,9 @@
 
 unit PointerTrie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 

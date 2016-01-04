@@ -39,7 +39,9 @@
 
 unit Trie;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
@@ -97,7 +99,7 @@ type
       TrieDepth16Bits      : (LastResult16 : Word;);
       TrieDepth32Bits      : (LastResult32 : Integer;);
       TrieDepth64Bits      : (LastResult64 : Int64;);
-      TrieDepthPointerSize : (LastResultPtr : Pointer;);
+      -TrieDepthPointerSize : (LastResultPtr : Pointer;);
   end;
 
   { TTrie }
@@ -132,7 +134,7 @@ type
     FCount : Integer;
     function InternalFind(const Data; out ANode : PTrieLeafNode; out AChildIndex : Byte) : Boolean;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
-    procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); inline;
+    procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); {$IFDEF FPC} inline; {$ENDIF}
     function GetBitFieldIndex(const Data; Level : Byte) : Byte;
     function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean;
     function Find(const Data) : Boolean;
@@ -159,6 +161,9 @@ type
 
 implementation
 
+type
+  TTrieInt64ChildIndexMask = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
+
 const
   ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
     (12, 8, 4, 0);
@@ -166,7 +171,7 @@ const
     (28, 24, 20, 16, 12, 8, 4, 0);
   ChildIndexShiftArray64 : array[0..TrieDepth64Bits - 1] of Byte =
     (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0);
-  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of Int64 =
+  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of TTrieInt64ChildIndexMask =
     ($FFFFFFFFFFFFFFF0, $FFFFFFFFFFFFFF0F, $FFFFFFFFFFFFF0FF, $FFFFFFFFFFFF0FFF,
      $FFFFFFFFFFF0FFFF, $FFFFFFFFFF0FFFFF, $FFFFFFFFF0FFFFFF, $FFFFFFFF0FFFFFFF,
      $FFFFFFF0FFFFFFFF, $FFFFFF0FFFFFFFFF, $FFFFF0FFFFFFFFFF, $FFFF0FFFFFFFFFFF,

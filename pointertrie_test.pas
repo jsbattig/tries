@@ -24,12 +24,20 @@
 
 unit PointerTrie_Test;
 
+{$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ENDIF}
 
 interface
 
 uses
-  Classes, SysUtils, fpcunit, testregistry, PointerTrie, Trie;
+  Classes, SysUtils,
+  {$IFDEF FPC}
+  fpcunit, testregistry,
+  {$ELSE}
+  TestFramework,
+  {$ENDIF}
+  PointerTrie, Trie;
 
 type
 
@@ -296,6 +304,10 @@ begin
 end;
 
 initialization
+  {$IFDEF FPC}
   RegisterTest(TTestPointerTrie);
+  {$ELSE}
+  RegisterTest(TTestPointerTrie.Suite);
+  {$ENDIF}
 end.
 
