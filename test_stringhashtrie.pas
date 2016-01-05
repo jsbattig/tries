@@ -2,11 +2,11 @@ unit Test_StringHashTrie;
 
 {$IFDEF FPC}
 {$mode objfpc}{$H+}
-{$ENDIF}
-
+{$ELSE}
 {$IF CompilerVersion >= 22}
   {$DEFINE HasGenerics}
 {$IFEND}
+{$ENDIF}
 
 interface
 

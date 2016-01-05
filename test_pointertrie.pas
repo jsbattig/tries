@@ -228,7 +228,7 @@ var
 begin
   if sizeof(Pointer) = sizeof(Cardinal) then
     ExtraDepth := 0
-  else ExtraDepth := 8;
+  else {%H-}ExtraDepth := 8;
   FPointerTrie.Add(Pointer($00000001));
   CheckEquals(8 + ExtraDepth, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
   FPointerTrie.Add(Pointer($00000002));

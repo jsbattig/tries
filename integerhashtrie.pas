@@ -271,7 +271,7 @@ begin
   begin
     if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
       key := PInt64(kvp^.Key)^
-    else key := Int64(kvp^.Key);
+    else key := {%H-}Int64(kvp^.Key);
     Value := kvp^.Value;
     Result := True;
   end
