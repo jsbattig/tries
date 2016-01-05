@@ -93,7 +93,7 @@ end;
 procedure TIntegerHashTrieTest.TestIterate32;
 var
   Key : Cardinal;
-  Key32 : Word;
+  Key16 : Word;
   Value : pointer;
   It : THashTrieIterator;
 begin
@@ -106,8 +106,17 @@ begin
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
   FIntHashTrie.InitIterator(It);
+  {$IFNDEF FPC}
   ExpectedException := EIntegerHashTrie;
-  FIntHashTrie.Next(It, Key32, Value);
+  FIntHashTrie.Next(It, Key16, Value);
+  {$ELSE}
+  try
+    FIntHashTrie.Next(It, Key16, Value);
+    Fail('Expected exception');
+  except
+    on EIntegerHashTrie do {};
+  end;
+  {$ENDIF}
 end;
 
 procedure TIntegerHashTrieTest.TestIterate16;
@@ -126,8 +135,17 @@ begin
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
   FIntHashTrie.InitIterator(It);
+  {$IFNDEF FPC}
   ExpectedException := EIntegerHashTrie;
   FIntHashTrie.Next(It, Key32, Value);
+  {$ELSE}
+  try
+    FIntHashTrie.Next(It, Key32, Value);
+    Fail('Expected exception');
+  except
+    on EIntegerHashTrie do {};
+  end;
+  {$ENDIF}
 end;
 
 procedure TIntegerHashTrieTest.TestIterate64;
@@ -146,8 +164,17 @@ begin
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
   FIntHashTrie.InitIterator(It);
+  {$IFNDEF FPC}
   ExpectedException := EIntegerHashTrie;
   FIntHashTrie.Next(It, Key32, Value);
+  {$ELSE}
+  try
+    FIntHashTrie.Next(It, Key32, Value);
+    Fail('Expected exception');
+  except
+    on EIntegerHashTrie do {};
+  end;
+  {$ENDIF}
 end;
 
 initialization
