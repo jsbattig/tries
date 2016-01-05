@@ -4,6 +4,10 @@ unit Test_StringHashTrie;
 {$mode objfpc}{$H+}
 {$ENDIF}
 
+{$IF CompilerVersion >= 22}
+  {$DEFINE HasGenerics}
+{$IFEND}
+
 interface
 
 uses
@@ -33,7 +37,9 @@ type
     procedure TestAddDuplicatesFailure;
     procedure TestAddAndFindHash16;
     procedure TestAddAndFindHash64;
+    {$IFDEF HasGenerics}
     procedure TestAddAndFindManyEntriesUsingTDictionary;
+    {$ENDIF}
     procedure TestRemove;
     procedure TestIterator;
     procedure TestIteratorDuplicateString;
@@ -44,7 +50,7 @@ type
 implementation
 
 uses
-  Hash_Trie, Trie, Generics.Collections;
+  Hash_Trie, Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
 
 procedure TStringHashTrieTest.TestCreate;
 begin
@@ -244,6 +250,7 @@ begin
   FStrHashTrie.Free;
 end;
 
+{$IFDEF HasGenerics}
 procedure TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary;
 const
   Count = 1024 * 64;
@@ -286,6 +293,7 @@ begin
     FDict.Free;
   end;
 end;
+{$ENDIF}
 
 initialization
   {$IFDEF FPC}
