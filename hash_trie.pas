@@ -145,7 +145,7 @@ begin
     if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
     begin
       FreeMem(PHashTrieNode(ANode)^.Children);
-      dec(FStats.TotalMemAlloced, PHashTrieNode(ANode)^.Base.ChildrenCount * sizeof(Pointer));
+      dec(FStats.TotalMemAlloced, Int64(PHashTrieNode(ANode)^.Base.ChildrenCount) * Int64(sizeof(Pointer)));
     end;
   end;
   inherited FreeTrieNode(ANode, Level);
