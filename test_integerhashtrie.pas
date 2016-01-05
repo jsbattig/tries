@@ -99,19 +99,29 @@ var
 begin
   FIntHashTrie := TIntegerHashTrie.Create(hs32);
   for i := 1 to 1024 do
-    FIntHashTrie.Add(i, Pointer(i));
+    FIntHashTrie.Add(i, {%H-}Pointer(i));
   for i := 1 to 1024 do
   begin
     Check(FIntHashTrie.Find(i, Value), 'Should find element');
-    CheckEquals(i, Cardinal(Value), 'Value should match');
+    CheckEquals(i, {%H-}Cardinal(Value), 'Value should match');
   end;
 end;
 
 procedure TIntegerHashTrieTest.TestAddZeroKey;
 begin
   FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  {$IFNDEF FPC}
   ExpectedException := EIntegerHashTrie;
-  FIntHashTrie.Add(Cardinal(0), nil);
+  {$ELSE}
+  try
+  {$ENDIF}
+    FIntHashTrie.Add(Cardinal(0), nil);
+  {$IFDEF FPC}
+    Fail('Expecting exception EIntegerHashTrie');
+  except
+    on E : EIntegerHashTrie do {};
+  end;
+  {$ENDIF}
 end;
 
 procedure TIntegerHashTrieTest.TestIterate32;
