@@ -58,7 +58,9 @@ begin
   {$ENDIF}
   case HashSize of
     hs16, hs32 : Result := key1 = key2;
-    hs64 : Result := PInt64(key1)^ = PInt64(key2)^;
+    hs64 : if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
+      Result := PInt64(key1)^ = PInt64(key2)^
+    else Result := key1 = key2;
     else RaiseTrieDepthError;
   end;
 end;
@@ -267,7 +269,9 @@ begin
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
-    key := PInt64(kvp^.Key)^;
+    if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
+      key := PInt64(kvp^.Key)^
+    else key := {%H-}Int64(kvp^.Key);
     Value := kvp^.Value;
     Result := True;
   end

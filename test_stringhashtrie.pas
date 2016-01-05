@@ -2,6 +2,10 @@ unit Test_StringHashTrie;
 
 {$IFDEF FPC}
 {$mode objfpc}{$H+}
+{$ELSE}
+{$IF CompilerVersion >= 22}
+  {$DEFINE HasGenerics}
+{$IFEND}
 {$ENDIF}
 
 interface
@@ -33,6 +37,9 @@ type
     procedure TestAddDuplicatesFailure;
     procedure TestAddAndFindHash16;
     procedure TestAddAndFindHash64;
+    {$IFDEF HasGenerics}
+    procedure TestAddAndFindManyEntriesUsingTDictionary;
+    {$ENDIF}
     procedure TestRemove;
     procedure TestIterator;
     procedure TestIteratorDuplicateString;
@@ -43,7 +50,7 @@ type
 implementation
 
 uses
-  Hash_Trie, Trie;
+  Hash_Trie, Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
 
 procedure TStringHashTrieTest.TestCreate;
 begin
@@ -242,6 +249,51 @@ procedure TStringHashTrieTest.TearDown;
 begin
   FStrHashTrie.Free;
 end;
+
+{$IFDEF HasGenerics}
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary;
+const
+  Count = 1024 * 64;
+var
+  List : TStringList;
+  i : integer;
+  AKey : AnsiString;
+  AValue : Pointer;
+  FDict : TDictionary<AnsiString, Pointer>;
+  Enum : TPair<AnsiString, Pointer>;
+begin
+  FDict := TDictionary<AnsiString, Pointer>.Create;
+  try
+    List := TStringList.Create;
+    try
+      for i := 0 to Count - 1 do
+      begin
+        List.Add(IntToStr(i) + 'hello ' + IntToStr(Count - i));
+        FDict.Add(AnsiString(List[i]), Pointer(i));
+      end;
+      CheckEquals(Count, FDict.Count, 'Count doesn''t match');
+      List.Sorted := True;
+      for Enum in FDict do
+      begin
+        AKey := Enum.Key;
+        AValue := Enum.Value;
+        i := List.IndexOf(AKey);
+        if i = -1 then
+          CheckEquals('', AKey);
+        CheckNotEquals(-1, i, 'Key not found in original list');
+        CheckEquals(IntToStr(NativeInt(AValue)) + 'hello ' + IntToStr(Count - NativeInt(AValue)), AKey, 'Expected key value doesn''t match');
+        List.Delete(i);
+      end;
+      if List.Count > 0 then
+        CheckEquals('', List.CommaText);
+    finally
+      List.Free;
+    end;
+  finally
+    FDict.Free;
+  end;
+end;
+{$ENDIF}
 
 initialization
   {$IFDEF FPC}

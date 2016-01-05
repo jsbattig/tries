@@ -223,13 +223,18 @@ begin
 end;
 
 procedure TTestPointerTrie.TestPackSuccess;
+var
+  ExtraDepth : Integer;
 begin
+  if sizeof(Pointer) = sizeof(Cardinal) then
+    ExtraDepth := 0
+  else {%H-}ExtraDepth := 8;
   FPointerTrie.Add(Pointer($00000001));
-  CheckEquals(8, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
+  CheckEquals(8 + ExtraDepth, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
   FPointerTrie.Add(Pointer($00000002));
   FPointerTrie.Add(Pointer($10000000));
-  CheckEquals(15, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
-  CheckEquals(13 * sizeof(TTrieBranchNode) + 12 * sizeof(Pointer) + 2 * sizeof(TTrieLeafNode), FPointerTrie.Stats.TotalMemAlloced, 'TotalMemAlloced mismatch');
+  CheckEquals(15 + ExtraDepth, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
+  CheckEquals((13 + ExtraDepth) * sizeof(TTrieBranchNode) + (12 + ExtraDepth) * sizeof(Pointer) + 2 * sizeof(TTrieLeafNode), FPointerTrie.Stats.TotalMemAlloced, 'TotalMemAlloced mismatch');
   FPointerTrie.Pack;
   Check(FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) not found');
   Check(FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) not found');
@@ -244,8 +249,8 @@ begin
   Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
   FPointerTrie.Remove(Pointer($00000002));
   FPointerTrie.Pack;
-  CheckEquals(8, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
-  CheckEquals(7 * sizeof(TTrieBranchNode) + 6 * sizeof(Pointer) + 1 * sizeof(TTrieLeafNode), FPointerTrie.Stats.TotalMemAlloced, 'TotalMemAlloced mismatch');
+  CheckEquals(8 + ExtraDepth, FPointerTrie.Stats.NodeCount, 'NodeCount mismatch');
+  CheckEquals((7 + ExtraDepth) * sizeof(TTrieBranchNode) + (6 + ExtraDepth) * sizeof(Pointer) + 1 * sizeof(TTrieLeafNode), FPointerTrie.Stats.TotalMemAlloced, 'TotalMemAlloced mismatch');
   Check(not FPointerTrie.Find(Pointer($00000001)), 'Pointer($00000001) found');
   Check(not FPointerTrie.Find(Pointer($00000002)), 'Pointer($0000002) found');
   Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
