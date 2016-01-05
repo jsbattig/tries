@@ -15,6 +15,9 @@ type
   TIntegerHashTrie = class(THashTrie)
   private
     procedure CheckHashSize(ASize: THashSize); inline;
+    procedure CheckKey(AKey: Cardinal); overload; inline;
+    procedure CheckKey(AKey: Word); overload; inline;
+    procedure CheckKey(AKey: Int64); overload; inline;
     procedure InternalAdd(key : Pointer; Value : Pointer);
     function InternalFind(key: Pointer; out Value: Pointer): Boolean;
   protected
@@ -86,12 +89,14 @@ end;
 procedure TIntegerHashTrie.Add(key: Cardinal; Value: Pointer);
 begin
   CheckHashSize(hs32);
+  CheckKey(key);
   InternalAdd({%H-}Pointer(key), Value);
 end;
 
 procedure TIntegerHashTrie.Add(key: Word; Value: Pointer);
 begin
   CheckHashSize(hs16);
+  CheckKey(key);
   InternalAdd({%H-}Pointer(key), Value);
 end;
 
@@ -100,6 +105,7 @@ var
   keyInt64 : PInt64;
 begin
   CheckHashSize(hs64);
+  CheckKey(key);
   if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
   begin
     New(keyInt64);
@@ -117,21 +123,48 @@ begin
     raise EIntegerHashTrie.Create(SHashSizeMismatch);
 end;
 
+procedure TIntegerHashTrie.CheckKey(AKey: Cardinal);
+const
+  SKeyCantBeZero = 'Key can''t be zero';
+begin
+  if AKey = 0 then
+    raise EIntegerHashTrie.Create(SKeyCantBeZero);
+end;
+
+procedure TIntegerHashTrie.CheckKey(AKey: Word);
+const
+  SKeyCantBeZero = 'Key can''t be zero';
+begin
+  if AKey = 0 then
+    raise EIntegerHashTrie.Create(SKeyCantBeZero);
+end;
+
+procedure TIntegerHashTrie.CheckKey(AKey: Int64);
+const
+  SKeyCantBeZero = 'Key can''t be zero';
+begin
+  if AKey = 0 then
+    raise EIntegerHashTrie.Create(SKeyCantBeZero);
+end;
+
 function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
 begin
   CheckHashSize(hs32);
+  CheckKey(key);
   Result := InternalFind({%H-}Pointer(key), Value);
 end;
 
 function TIntegerHashTrie.Find(key: Word; out Value: Pointer): Boolean;
 begin
   CheckHashSize(hs16);
+  CheckKey(key);
   Result := InternalFind({%H-}Pointer(key), Value);
 end;
 
 function TIntegerHashTrie.Find(key: Int64; out Value: Pointer): Boolean;
 begin
   CheckHashSize(hs64);
+  CheckKey(key);
   if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
     Result := InternalFind(@key, Value)
   else Result := InternalFind({%H-}Pointer(key), Value);;
@@ -163,18 +196,21 @@ end;
 function TIntegerHashTrie.Remove(key: Cardinal): Boolean;
 begin
   CheckHashSize(hs32);
+  CheckKey(key);
   Result := inherited Remove({%H-}Pointer(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Word): Boolean;
 begin
   CheckHashSize(hs16);
+  CheckKey(key);
   Result := inherited Remove({%H-}Pointer(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Int64): Boolean;
 begin
   CheckHashSize(hs64);
+  CheckKey(key);
   if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
     Result := inherited Remove(@key)
   else Result := inherited Remove({%H-}Pointer(key));

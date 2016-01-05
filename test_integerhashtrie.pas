@@ -25,6 +25,8 @@ type
     procedure TestAddFindAndRemove32;
     procedure TestAddFindAndRemove16;
     procedure TestAddFindAndRemove64;
+    procedure TestAddSomeElements;
+    procedure TestAddZeroKey;
     procedure TestCreateIntegerHashTrie;
     procedure TestIterate32;
     procedure TestIterate16;
@@ -88,6 +90,28 @@ begin
   Check(Value = Pointer(Self), 'Value should be equals to Self');
   Check(FIntHashTrie.Remove(Key), 'Key was not found?');
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
+end;
+
+procedure TIntegerHashTrieTest.TestAddSomeElements;
+var
+  i : Cardinal;
+  Value : Pointer;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  for i := 1 to 1024 do
+    FIntHashTrie.Add(i, Pointer(i));
+  for i := 1 to 1024 do
+  begin
+    Check(FIntHashTrie.Find(i, Value), 'Should find element');
+    CheckEquals(i, Cardinal(Value), 'Value should match');
+  end;
+end;
+
+procedure TIntegerHashTrieTest.TestAddZeroKey;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  ExpectedException := EIntegerHashTrie;
+  FIntHashTrie.Add(Cardinal(0), nil);
 end;
 
 procedure TIntegerHashTrieTest.TestIterate32;
