@@ -35,6 +35,15 @@
   branch node.
   Finally, Leaf nodes can be dynamically controlled by the derived class from TTrie
   allowing for easy implementation of dictionaries using TTrie as a base.
+
+  IMPORTANT NOTE ON Delphi 2007:
+
+  Delphi 2007 compiler places the start of Int64 at a different address than
+  the 32 bits counterpart on the union... Go figure.. FreePascal and higher
+  versions of Delphi behave consistently placing all elements on the same
+  starting address.
+
+  You will see in a few places "strange" IFDEFS VER180 to address this situation
 *)
 
 unit Trie;
@@ -50,8 +59,8 @@ uses
 
 const
   BitsPerByte                = 8;
-  BitsForChildIndexPerBucket = 4;
-  BucketMask                 = $F;
+  BitsForChildIndexPerBucket = 4;   // Don't play with this knob, code designed to work on this specific value
+  BucketMask                 = $F;  // Don't play with this knob, code designed to work on this specific value
   MaxTrieDepth               = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
   TrieDepth16Bits            = (sizeof(Word) * BitsPerByte) div BitsForChildIndexPerBucket;
@@ -131,6 +140,7 @@ type
     procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
+    procedure CleanLowBitsIteratorLastResult(var AIterator : TTrieIterator; ATrieDepth : Byte); inline;
   protected
     FStats : TTrieStats;
     FCount : Integer;
@@ -536,10 +546,6 @@ begin
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
     {$IFDEF VER180}
-    { Delphi 2007 compiler places the start of Int64 at a different address than
-      the 32 bits counterpart on the union... Go figure.. FreePascal and higher
-      versions of Delphi behave consistently placing all elements on the same
-      starting address }
     if ATrieDepth > TrieDepth32Bits then
       AIterator.LastResult64 := 0
     else AIterator.LastResult32 := 0;
@@ -547,16 +553,7 @@ begin
     AIterator.LastResult64 := 0;
     {$ENDIF}
   end
-  else
-  begin
-    // We need to clean the lowest four bits when re-entering Next()
-    case ATrieDepth of
-      1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
-      TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-      TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
-      else RaiseTrieDepthError;
-    end;
-  end;
+  else CleanLowBitsIteratorLastResult(AIterator, ATrieDepth);
   repeat
     while AIterator.BreadCrumbs[AIterator.Level] < ChildrenPerBucket do
     begin
@@ -609,23 +606,12 @@ begin
     exit;
   end;
   case FTrieDepth of
-    TrieDepth16Bits :
-    begin
-      AIterator.LastResult16 := AIterator.LastResult16 shr BitsForChildIndexPerBucket;
-      AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
-    end;
-    TrieDepth32Bits :
-    begin
-      AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
-      AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-    end;
-    TrieDepth64Bits :
-    begin
-      AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
-      AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
-    end;
+    TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shr BitsForChildIndexPerBucket;
+    TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
+    TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
     else RaiseTrieDepthError;
   end;
+  CleanLowBitsIteratorLastResult(AIterator, FTrieDepth);
   Result := True;
 end;
 
@@ -685,6 +671,17 @@ begin
   for i := 0 to ChildrenCount - 1 do
     FreeTrieNode(@PTrieLeafNode(@Arr^[i * Integer(LeafSize)])^.Base, Level);
   FreeMem(Arr);
+end;
+
+procedure TTrie.CleanLowBitsIteratorLastResult(var AIterator: TTrieIterator;
+  ATrieDepth: Byte);
+begin
+  case ATrieDepth of
+    1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
+    TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
+    TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
+    else RaiseTrieDepthError;
+  end;
 end;
 
 function TTrie.LeafSize: Cardinal;
