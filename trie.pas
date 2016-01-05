@@ -35,6 +35,15 @@
   branch node.
   Finally, Leaf nodes can be dynamically controlled by the derived class from TTrie
   allowing for easy implementation of dictionaries using TTrie as a base.
+
+  IMPORTANT NOTE ON Delphi 2007:
+
+  Delphi 2007 compiler places the start of Int64 at a different address than
+  the 32 bits counterpart on the union... Go figure.. FreePascal and higher
+  versions of Delphi behave consistently placing all elements on the same
+  starting address.
+
+  You will see in a few places "strange" IFDEFS VER180 to address this situation
 *)
 
 unit Trie;
@@ -50,8 +59,8 @@ uses
 
 const
   BitsPerByte                = 8;
-  BitsForChildIndexPerBucket = 4;
-  BucketMask                 = $F;
+  BitsForChildIndexPerBucket = 4;   // Don't play with this knob, code designed to work on this specific value
+  BucketMask                 = $F;  // Don't play with this knob, code designed to work on this specific value
   MaxTrieDepth               = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
   TrieDepth16Bits            = (sizeof(Word) * BitsPerByte) div BitsForChildIndexPerBucket;
@@ -537,10 +546,6 @@ begin
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
     {$IFDEF VER180}
-    { Delphi 2007 compiler places the start of Int64 at a different address than
-      the 32 bits counterpart on the union... Go figure.. FreePascal and higher
-      versions of Delphi behave consistently placing all elements on the same
-      starting address }
     if ATrieDepth > TrieDepth32Bits then
       AIterator.LastResult64 := 0
     else AIterator.LastResult32 := 0;
