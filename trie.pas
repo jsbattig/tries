@@ -144,7 +144,8 @@ type
   protected
     FStats : TTrieStats;
     FCount : Integer;
-    function InternalFind(const Data; out ANode : PTrieLeafNode; out AChildIndex : Byte) : Boolean;
+    function InternalFind(const Data; out ANode: PTrieLeafNode; out AChildIndex:
+        Byte; LeafHasChildIndex: Boolean): Boolean;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); {$IFDEF FPC} inline; {$ENDIF}
     function GetBitFieldIndex(const Data; Level : Byte) : Byte;
@@ -314,7 +315,7 @@ begin
 end;
 
 function TTrie.InternalFind(const Data; out ANode: PTrieLeafNode; out
-  AChildIndex: Byte): Boolean;
+    AChildIndex: Byte; LeafHasChildIndex: Boolean): Boolean;
 var
   i, BitFieldIndex, ATrieDepth : Byte;
   CurNode : PTrieBaseNode;
@@ -329,7 +330,8 @@ begin
     BitFieldIndex := GetBitFieldIndex(Data, i);
     if not GetBusyIndicator(CurNode, BitFieldIndex) then
       exit;
-    AChildIndex := GetChildIndex(PTrieBranchNode(CurNode), BitFieldIndex);
+    if (i < ATrieDepth - 1) or LeafHasChildIndex then
+      AChildIndex := GetChildIndex(PTrieBranchNode(CurNode), BitFieldIndex);
     if i = ATrieDepth - 1 then
       break;
     CurNode := NextNode(PTrieBranchNode(CurNode), i, AChildIndex);
@@ -432,7 +434,7 @@ var
   DummyChildIndex : Byte;
   DummyNode : PTrieLeafNode;
 begin
-  Result := InternalFind(Data, DummyNode, DummyChildIndex);
+  Result := InternalFind(Data, DummyNode, DummyChildIndex, False);
 end;
 
 procedure TTrie.Remove(const Data);
@@ -440,7 +442,7 @@ var
   ChildIndex : Byte;
   Node : PTrieLeafNode;
 begin
-  if InternalFind(Data, Node, ChildIndex) then
+  if InternalFind(Data, Node, ChildIndex, False) then
   begin
     SetBusyIndicator(@Node^.Base, GetBitFieldIndex(Data, FTrieDepth - 1), False);
     dec(FCount);
