@@ -329,9 +329,9 @@ begin
     BitFieldIndex := GetBitFieldIndex(Data, i);
     if not GetBusyIndicator(CurNode, BitFieldIndex) then
       exit;
+    AChildIndex := GetChildIndex(PTrieBranchNode(CurNode), BitFieldIndex);
     if i = ATrieDepth - 1 then
       break;
-    AChildIndex := GetChildIndex(PTrieBranchNode(CurNode), BitFieldIndex);
     CurNode := NextNode(PTrieBranchNode(CurNode), i, AChildIndex);
   end;
   ANode := PTrieLeafNode(CurNode);
