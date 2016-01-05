@@ -7,11 +7,16 @@ unit IntegerHashTrie;
 interface
 
 uses
-  Hash_Trie;
+  Trie, Hash_Trie;
 
 type
+  EIntegerHashTrie = class(ETrie);
   { TIntegerHashTrie }
   TIntegerHashTrie = class(THashTrie)
+  private
+    procedure CheckHashSize(ASize: THashSize); inline;
+    procedure InternalAdd(key : Pointer; Value : Pointer);
+    function InternalFind(key: Pointer; out Value: Pointer): Boolean;
   protected
     function CompareKeys(key1, key2 : Pointer) : Boolean; override;
     function Hash32(key : Pointer): Cardinal; override;
@@ -49,8 +54,7 @@ begin
   Result := False;
   {$ENDIF}
   case HashSize of
-    hs16 : Result := PWord(key1)^ = PWord(key2)^;
-    hs32 : Result := PCardinal(key1)^ = PCardinal(key2)^;
+    hs16, hs32 : Result := key1 = key2;
     hs64 : Result := PInt64(key1)^ = PInt64(key2)^;
     else RaiseTrieDepthError;
   end;
@@ -80,74 +84,76 @@ begin
 end;
 
 procedure TIntegerHashTrie.Add(key: Cardinal; Value: Pointer);
-var
-  kvp : TKeyValuePair;
 begin
-  kvp.Key := {%H-}Pointer(key);
-  kvp.Value := Value;
-  inherited Add(@kvp);
+  CheckHashSize(hs32);
+  InternalAdd({%H-}Pointer(key), Value);
 end;
 
 procedure TIntegerHashTrie.Add(key: Word; Value: Pointer);
-var
-  kvp : TKeyValuePair;
 begin
-  kvp.Key := {%H-}Pointer(key);
-  kvp.Value := Value;
-  inherited Add(@kvp);
+  CheckHashSize(hs16);
+  InternalAdd({%H-}Pointer(key), Value);
 end;
 
 procedure TIntegerHashTrie.Add(key: Int64; Value: Pointer);
 var
-  kvp : TKeyValuePair;
   keyInt64 : PInt64;
 begin
+  CheckHashSize(hs64);
   if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
   begin
     New(keyInt64);
     keyInt64^ := key;
-    kvp.Key := keyInt64;
+    InternalAdd(keyInt64, Value);
   end
-  else kvp.Key := {%H-}Pointer(key);
+  else InternalAdd({%H-}Pointer(key), Value);
+end;
+
+procedure TIntegerHashTrie.CheckHashSize(ASize: THashSize);
+const
+  SHashSizeMismatch = 'HashSize mismatch';
+begin
+  if ASize <> HashSize then
+    raise EIntegerHashTrie.Create(SHashSizeMismatch);
+end;
+
+function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
+begin
+  CheckHashSize(hs32);
+  Result := InternalFind({%H-}Pointer(key), Value);
+end;
+
+function TIntegerHashTrie.Find(key: Word; out Value: Pointer): Boolean;
+begin
+  CheckHashSize(hs16);
+  Result := InternalFind({%H-}Pointer(key), Value);
+end;
+
+function TIntegerHashTrie.Find(key: Int64; out Value: Pointer): Boolean;
+begin
+  CheckHashSize(hs64);
+  if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
+    Result := InternalFind(@key, Value)
+  else Result := InternalFind({%H-}Pointer(key), Value);;
+end;
+
+procedure TIntegerHashTrie.InternalAdd(key : Pointer; Value : Pointer);
+var
+  kvp : TKeyValuePair;
+begin
+  kvp.Key := key;
   kvp.Value := Value;
   inherited Add(@kvp);
 end;
 
-function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
+function TIntegerHashTrie.InternalFind(key: Pointer; out Value: Pointer):
+    Boolean;
 var
   kvp : PKeyValuePair;
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
-  kvp := inherited Find({%H-}Pointer(key), HashTrieNode, AChildIndex);
-  Result := kvp <> nil;
-  if Result then
-    Value := kvp^.Value
-  else Value := nil;
-end;
-
-function TIntegerHashTrie.Find(key: Word; out Value: Pointer): Boolean;
-var
-  kvp : PKeyValuePair;
-  AChildIndex : Byte;
-  HashTrieNode : PHashTrieNode;
-begin
-  kvp := inherited Find({%H-}Pointer(key), HashTrieNode, AChildIndex);
-  Result := kvp <> nil;
-  if Result then
-    Value := kvp^.Value
-  else Value := nil;
-end;
-
-function TIntegerHashTrie.Find(key: Int64; out Value: Pointer): Boolean;
-var
-  kvp : PKeyValuePair;
-  AChildIndex : Byte;
-  HashTrieNode : PHashTrieNode;
-begin
-  if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
-    kvp := inherited Find(@key, HashTrieNode, AChildIndex)
-  else kvp := inherited Find({%H-}Pointer(key), HashTrieNode, AChildIndex);
+  kvp := inherited Find(key, HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value
@@ -156,16 +162,19 @@ end;
 
 function TIntegerHashTrie.Remove(key: Cardinal): Boolean;
 begin
+  CheckHashSize(hs32);
   Result := inherited Remove({%H-}Pointer(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Word): Boolean;
 begin
+  CheckHashSize(hs16);
   Result := inherited Remove({%H-}Pointer(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Int64): Boolean;
 begin
+  CheckHashSize(hs64);
   if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
     Result := inherited Remove(@key)
   else Result := inherited Remove({%H-}Pointer(key));
@@ -176,6 +185,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out
 var
   kvp : PKeyValuePair;
 begin
+  CheckHashSize(hs32);
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
@@ -196,6 +206,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out key: Word;
 var
   kvp : PKeyValuePair;
 begin
+  CheckHashSize(hs16);
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
@@ -216,6 +227,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out
 var
   kvp : PKeyValuePair;
 begin
+  CheckHashSize(hs64);
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin

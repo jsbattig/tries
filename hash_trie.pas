@@ -127,7 +127,6 @@ var
   ListNode, TmpNode : PKeyValuePairNode;
   i : SmallInt;
 begin
-  inherited FreeTrieNode(ANode, Level);
   if Level = TrieDepth - 1 then
   begin
     for i := 0 to PHashTrieNode(ANode)^.Base.ChildrenCount - 1 do
@@ -140,9 +139,16 @@ begin
         FreeKey(TmpNode^.KVP.Key);
         FreeValue(TmpNode^.KVP.Value);
         FreeMem(TmpNode);
+        dec(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
       end;
     end;
+    if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
+    begin
+      FreeMem(PHashTrieNode(ANode)^.Children);
+      dec(FStats.TotalMemAlloced, Int64(PHashTrieNode(ANode)^.Base.ChildrenCount) * Int64(sizeof(Pointer)));
+    end;
   end;
+  inherited FreeTrieNode(ANode, Level);
 end;
 
 procedure THashTrie.Add(kvp: PKeyValuePair);
@@ -161,6 +167,7 @@ begin
     inc(Node^.Base.ChildrenCount);
     SetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1), ChildIndex);
     ReallocMem(Node^.Children, Node^.Base.ChildrenCount * sizeof(Pointer));
+    inc(FStats.TotalMemAlloced, sizeof(Pointer));
     PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
   end
   else
@@ -187,6 +194,7 @@ begin
   kvpNode^.KVP.Value := kvp^.Value;
   kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
   PHashTrieNodeArray(Node^.Children)^[ChildIndex] := kvpNode;
+  inc(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
 end;
 
 function THashTrie.Find(key: Pointer; out HashTrieNode: PHashTrieNode; out
@@ -237,6 +245,7 @@ begin
       FreeKey(ListNode^.KVP.Key);
       FreeValue(ListNode^.KVP.Value);
       FreeMem(ListNode);
+      dec(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
       Result := True;
       exit;
     end;

@@ -72,6 +72,7 @@ end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
+  dec(FStats.TotalMemAlloced, {%H-}PCardinal({%H-}Cardinal(key) - sizeof(Cardinal))^);
   StrDispose(key);
 end;
 
@@ -82,6 +83,7 @@ begin
   kvp.Key := strnew(PAnsiChar(key));
   kvp.Value := Value;
   inherited Add(@kvp);
+  inc(FStats.TotalMemAlloced, Int64(length(key)) + 1);
 end;
 
 function TStringHashTrie.Find(const key: AnsiString; out Value: Pointer):
