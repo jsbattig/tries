@@ -204,7 +204,7 @@ var
   ListNode : PKeyValuePairNode;
 begin
   CalcHash(Hash, key);
-  if InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex) then
+  if InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
   begin
     ListNode := PHashTrieNodeArray(PHashTrieNode(HashTrieNode)^.Children)^[AChildIndex];
     while ListNode <> nil do
