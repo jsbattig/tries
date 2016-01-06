@@ -272,11 +272,7 @@ begin
   repeat
     if inherited Next(AIterator.Base) then
     begin
-      {$IFNDEF VER180}
       ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
-      {$ELSE}
-      ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult32, TrieDepth - 1);
-      {$ENDIF}
       AChildIndex := GetChildIndex(PTrieBranchNode(AIterator.Base.ANodeStack[TrieDepth - 1]), ABitFieldIndex);
       AIterator.ChildNode := PHashTrieNodeArray(PHashTrieNode(AIterator.Base.ANodeStack[TrieDepth - 1])^.Children)^[AChildIndex];
       if AIterator.ChildNode = nil then

@@ -35,15 +35,6 @@
   branch node.
   Finally, Leaf nodes can be dynamically controlled by the derived class from TTrie
   allowing for easy implementation of dictionaries using TTrie as a base.
-
-  IMPORTANT NOTE ON Delphi 2007:
-
-  Delphi 2007 compiler places the start of Int64 at a different address than
-  the 32 bits counterpart on the union... Go figure.. FreePascal and higher
-  versions of Delphi behave consistently placing all elements on the same
-  starting address.
-
-  You will see in a few places "strange" IFDEFS VER180 to address this situation
 *)
 
 unit Trie;
@@ -101,12 +92,26 @@ type
     TotalMemAlloced : Int64;
   end;
 
-  TTrieIterator = record
-    AtEnd : Boolean;
-    Level : SmallInt;
-    BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;
-    ANodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode;
-    case Integer of
+  (*
+    IMPORTANT NOTE ON Delphi 2007:
+
+    Delphi 2007 compiler places the start of Int64 at a different address than
+    the 32 bits counterpart on the union... Internal record layout related to
+    alignment or packing differs... bug or feature. Go figure..
+    FreePascal and higher
+    versions of Delphi behave consistently placing all elements on the same
+    starting address.
+
+    The following record relies on some optimization that requires that all of the
+    variant part of the record start on the same offset, that's why it's declared
+    as packed and the fields are padded.
+  *)
+  TTrieIterator = packed record
+    AtEnd : Boolean; _Filler1 : array [1..3] of Byte;         // 0..3
+    Level : SmallInt; _Filler2 : array [1..2] of Byte;        // 4..7
+    BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;     // 8..39
+    ANodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode; // 32bits: 40..103  | 64bits: 40..167
+    case Integer of                                           // 32bits: 104..111 | 64bits: 168..172
       TrieDepth16Bits       : (LastResult16 : Word;);
       TrieDepth32Bits       : (LastResult32 : Integer;);
       TrieDepth64Bits       : (LastResult64 : _Int64;);
@@ -363,13 +368,7 @@ begin
     FLastIndex := -1;
     InitIterator(FRandomAccessIterator);
   end;
-  {$IFDEF VER180}
-  if FTrieDepth > TrieDepth32Bits then
-    Result := @FRandomAccessIterator.LastResult64
-  else Result := @FRandomAccessIterator.LastResult32;
-  {$ELSE}
   Result := @FRandomAccessIterator.LastResult64;
-  {$ENDIF}
   if Index = FLastIndex then
     exit;
   repeat
@@ -457,9 +456,6 @@ begin
   AIterator.AtEnd := False;
   AIterator.Level := 0;
   AIterator.LastResult64 := 0;
-  {$IFDEF VER180}
-  AIterator.LastResult32 := 0;
-  {$ENDIF}
   for i := 0 to ATrieDepth - 1 do
   begin
     AIterator.BreadCrumbs[i] := 0;
@@ -547,13 +543,7 @@ begin
   if AIterator.Level = 0 then
   begin
     AIterator.ANodeStack[0] := @FRoot^.Base;
-    {$IFDEF VER180}
-    if ATrieDepth > TrieDepth32Bits then
-      AIterator.LastResult64 := 0
-    else AIterator.LastResult32 := 0;
-    {$ELSE}
     AIterator.LastResult64 := 0;
-    {$ENDIF}
   end
   else CleanLowBitsIteratorLastResult(AIterator, ATrieDepth);
   repeat
