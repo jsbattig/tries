@@ -28,9 +28,13 @@ type
   protected
     procedure SetUp; override;
     procedure TearDown; override;
+    procedure TraverseMeth(UserData: Pointer; Value: PAnsiChar; Data: TObject; var
+        Done: Boolean);
   published
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddAndTraverse;
+    procedure TestAddAndFindCaseInsensitive;
     procedure TestAddAndFindManyEntries;
     procedure TestAddAndIterateManyEntries;
     procedure TestAddDuplicateAndFind;
@@ -250,6 +254,22 @@ begin
   FStrHashTrie.Free;
 end;
 
+procedure TStringHashTrieTest.TestAddAndTraverse;
+begin
+  FStrHashTrie.Add('Hello World', Self);
+  FStrHashTrie.Traverse(nil, TraverseMeth);
+end;
+
+procedure TStringHashTrieTest.TestAddAndFindCaseInsensitive;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.CaseInsensitive := True;
+  FStrHashTrie.Add('Hello World', Self);
+  Check(FStrHashTrie.Find('hello world', Value), 'Item not found');
+  Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+end;
+
 {$IFDEF HasGenerics}
 procedure TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary;
 const
@@ -294,6 +314,13 @@ begin
   end;
 end;
 {$ENDIF}
+
+procedure TStringHashTrieTest.TraverseMeth(UserData: Pointer; Value: PAnsiChar;
+    Data: TObject; var Done: Boolean);
+begin
+  CheckEquals('Hello World', {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrPas(Value), 'Item not found');
+  Check(Data = Pointer(Self), 'Item found doesn''t match expected value');
+end;
 
 initialization
   {$IFDEF FPC}
