@@ -60,7 +60,7 @@ begin
   FIntHashTrie := TIntegerHashTrie.Create(hs32);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
-  FIntHashTrie.Traverse(nil, @TraverseMeth);
+  FIntHashTrie.Traverse(nil, {$IFDEF FPC}@{$ENDIF}TraverseMeth);
 end;
 
 procedure TIntegerHashTrieTest.TestAddFindAndRemove32;

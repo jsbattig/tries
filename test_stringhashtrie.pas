@@ -257,7 +257,7 @@ end;
 procedure TStringHashTrieTest.TestAddAndTraverse;
 begin
   FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.Traverse(nil, @TraverseMeth);
+  FStrHashTrie.Traverse(nil, {$IFDEF FPC}@{$ENDIF}TraverseMeth);
 end;
 
 procedure TStringHashTrieTest.TestAddAndFindCaseInsensitive;

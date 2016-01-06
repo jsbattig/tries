@@ -7,7 +7,14 @@ unit StringHashTrie;
 interface
 
 uses
-  Hash_Trie {$IFNDEF FPC}{$IFNDEF VER180},AnsiStrings {$ENDIF}{$ENDIF};
+  {$IFDEF FPC}
+  SysUtils,
+  {$ENDIF}
+  {$IFDEF VER180}
+  SysUtils,
+  {$ENDIF}
+  Hash_Trie
+  {$IFNDEF FPC}{$IFNDEF VER180},AnsiStrings {$ENDIF}{$ENDIF};
 
 type
   TStrHashTraverseProc = procedure(UserData: Pointer; Value: PAnsiChar;
@@ -40,7 +47,7 @@ type
 implementation
 
 uses
-  uSuperFastHash,SysUtils;
+  uSuperFastHash;
 
 { TStringHashTrie }
 
