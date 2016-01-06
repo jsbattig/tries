@@ -72,7 +72,7 @@ end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
-  dec(FStats.TotalMemAlloced, {%H-}PCardinal({%H-}Cardinal(key) - sizeof(Cardinal))^);
+  dec(FStats.TotalMemAlloced, {$IFDEF FPC}strlen(PAnsiChar(key)){$ELSE}PCardinal(Cardinal(key) - sizeof(Cardinal))^{$ENDIF});
   StrDispose(key);
 end;
 
