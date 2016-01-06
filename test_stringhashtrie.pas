@@ -28,8 +28,8 @@ type
   protected
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TraverseMeth(UserData: Pointer; Value: PAnsiChar; Data: TObject; var
-        Done: Boolean);
+    procedure TraverseMeth({%H-}UserData: Pointer; Value: PAnsiChar; Data: TObject; var
+        {%H-}Done: Boolean);
   published
     procedure TestCreate;
     procedure TestAddAndFind;
@@ -257,7 +257,7 @@ end;
 procedure TStringHashTrieTest.TestAddAndTraverse;
 begin
   FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.Traverse(nil, TraverseMeth);
+  FStrHashTrie.Traverse(nil, @TraverseMeth);
 end;
 
 procedure TStringHashTrieTest.TestAddAndFindCaseInsensitive;
@@ -319,7 +319,7 @@ procedure TStringHashTrieTest.TraverseMeth(UserData: Pointer; Value: PAnsiChar;
     Data: TObject; var Done: Boolean);
 begin
   CheckEquals('Hello World', {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrPas(Value), 'Item not found');
-  Check(Data = Pointer(Self), 'Item found doesn''t match expected value');
+  Check(Data = TObject(Self), 'Item found doesn''t match expected value');
 end;
 
 initialization

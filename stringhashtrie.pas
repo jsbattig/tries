@@ -7,7 +7,7 @@ unit StringHashTrie;
 interface
 
 uses
-  Hash_Trie {$IFDEF FPC}, Strings {$ELSE} {$IFNDEF VER180},AnsiStrings {$ENDIF}{$ENDIF};
+  Hash_Trie {$IFNDEF FPC}{$IFNDEF VER180},AnsiStrings {$ENDIF}{$ENDIF};
 
 type
   TStrHashTraverseProc = procedure(UserData: Pointer; Value: PAnsiChar;
@@ -40,7 +40,7 @@ type
 implementation
 
 uses
-  uSuperFastHash {$IFDEF VER180} ,SysUtils {$ENDIF};
+  uSuperFastHash,SysUtils;
 
 { TStringHashTrie }
 
@@ -148,7 +148,7 @@ begin
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PAnsiChar(Key), Value, Done);
+    UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
 end;
 
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:
@@ -162,7 +162,7 @@ begin
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PAnsiChar(Key), Value, Done);
+    UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
 end;
 
 end.

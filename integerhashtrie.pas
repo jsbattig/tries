@@ -300,7 +300,7 @@ begin
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, Value, Done);
+    UserProc(UserData, Key, TObject(Value), Done);
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer; UserProc:
@@ -314,7 +314,7 @@ begin
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, Value, Done);
+    UserProc(UserData, Key, TObject(Value), Done);
 end;
 
 end.

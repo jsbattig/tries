@@ -21,8 +21,8 @@ type
     FIntHashTrie : TIntegerHashTrie;
   protected
     procedure TearDown; override;
-    procedure TraverseMeth(UserData: Pointer; Value: integer; Data: TObject; var
-        Done: Boolean);
+    procedure TraverseMeth({%H-}UserData: Pointer; Value: integer; Data: TObject; var
+        {%H-}Done: Boolean);
   published
     procedure TestAddAndTraverse32;
     procedure TestAddFindAndRemove32;
@@ -60,7 +60,7 @@ begin
   FIntHashTrie := TIntegerHashTrie.Create(hs32);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
-  FIntHashTrie.Traverse(nil, TraverseMeth);
+  FIntHashTrie.Traverse(nil, @TraverseMeth);
 end;
 
 procedure TIntegerHashTrieTest.TestAddFindAndRemove32;
@@ -228,7 +228,7 @@ procedure TIntegerHashTrieTest.TraverseMeth(UserData: Pointer; Value: integer;
     Data: TObject; var Done: Boolean);
 begin
   CheckEquals(1, Value, 'Key should be equals to 1');
-  Check(Data = Pointer(Self), 'Value should be equals to Self');
+  Check(Data = TObject(Self), 'Value should be equals to Self');
 end;
 
 initialization
