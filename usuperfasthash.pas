@@ -1,16 +1,37 @@
 unit uSuperFastHash;
 
+{ Original C code for SuperFastHash by Paul Hsie }
+
 {$IFDEF FPC}
 {$mode objfpc}{$H+}
 {$ENDIF}
 
 interface
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal): Cardinal;
+function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean): Cardinal;
 
 implementation
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal): Cardinal;
+uses
+  SysUtils;
+
+type
+  PCardinal = ^Cardinal;
+
+var
+  UpperArray : array [AnsiChar] of AnsiChar;
+
+function UpperCardinal (n : Cardinal) : Cardinal;
+var
+  tmp, tmp2 : Cardinal;
+begin
+  tmp := n or $80808080;
+  tmp2 := tmp - $7B7B7B7B;
+  tmp := tmp xor n;
+  Result := ((((tmp2 or $80808080) - $66666666) and tmp) shr 2) xor n;
+end;
+
+function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean): Cardinal;
 var
   tmp : Cardinal;
   rem : integer;
@@ -30,6 +51,8 @@ begin
   for i := len downto 1 do
     begin
       CurCardinal := PCardinal (data)^;
+      if AUpper
+        then CurCardinal := UpperCardinal (CurCardinal);
       inc (Result, PWord (@CurCardinal)^);
       tmp  := (PWord (@PAnsiChar(@CurCardinal) [2])^ shl 11) xor Result;
       Result := (Result shl 16) xor tmp;
@@ -41,6 +64,8 @@ begin
     3 :
       begin
         CurCardinal := PWord (data)^ shl 8 + byte (data [sizeof (Word)]);
+        if AUpper
+          then CurCardinal := UpperCardinal (CurCardinal);
         inc (Result, PWord (@CurCardinal)^);
         Result := Result xor (Result shl 16);
         Result := Result xor (byte (PAnsiChar (@CurCardinal) [sizeof (Word)]) shl 18);
@@ -49,13 +74,17 @@ begin
     2 :
       begin
         CurCardinal := PWord (data)^;
+        if AUpper
+          then CurCardinal := UpperCardinal (CurCardinal);
         inc (Result, PWord (@CurCardinal)^);
         Result := Result xor (Result shl 11);
         inc (Result, Result shr 17);
       end;
     1 :
       begin
-        inc (Result, byte (data^));
+        if AUpper
+          then inc (Result, byte (UpperArray [data^]))
+          else inc (Result, byte (data^));
         Result := Result xor (Result shl 10);
         inc (Result, Result shr 1);
       end;
@@ -70,7 +99,11 @@ begin
   inc (Result, Result shr 6);
 end;
 
-{ Original C code for SuperFastHash by Paul Hsie}
+var
+  c : AnsiChar;
 
+initialization
+  for c := low (UpperArray) to high (UpperArray) do
+    UpperArray [c] := UpCase(c);
 end.
 

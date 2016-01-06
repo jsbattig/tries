@@ -10,6 +10,10 @@ uses
   Trie, Hash_Trie;
 
 type
+  TIntHashTraverseProc = procedure(UserData: Pointer; Value: integer;
+    Data: TObject; var Done: Boolean);
+  TIntHashTraverseMeth = procedure(UserData: Pointer; Value: integer;
+    Data: TObject; var Done: Boolean) of object;
   EIntegerHashTrie = class(ETrie);
   { TIntegerHashTrie }
   TIntegerHashTrie = class(THashTrie)
@@ -40,6 +44,8 @@ type
     function Next(var AIterator : THashTrieIterator; out key : Cardinal; out Value : Pointer) : Boolean; overload;
     function Next(var AIterator : THashTrieIterator; out key : Word; out Value : Pointer) : Boolean; overload;
     function Next(var AIterator : THashTrieIterator; out key : Int64; out Value : Pointer) : Boolean; overload;
+    procedure Traverse(UserData: Pointer; UserProc: TIntHashTraverseProc); overload;
+    procedure Traverse(UserData: Pointer; UserProc: TIntHashTraverseMeth); overload;
   end;
 
 implementation
@@ -281,6 +287,34 @@ begin
     Value := nil;
     Result := False;
   end;
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer; UserProc:
+    TIntHashTraverseMeth);
+var
+  It : THashTrieIterator;
+  Key : Cardinal;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer; UserProc:
+    TIntHashTraverseProc);
+var
+  It : THashTrieIterator;
+  Key : Cardinal;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
 end;
 
 end.
