@@ -69,6 +69,7 @@ type
   public
     constructor Create(AHashSize : THashSize);
     procedure InitIterator(out AIterator : THashTrieIterator);
+    procedure Pack; override;
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
@@ -139,13 +140,13 @@ begin
         FreeKey(TmpNode^.KVP.Key);
         FreeValue(TmpNode^.KVP.Value);
         FreeMem(TmpNode);
-        dec(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
+        dec(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
       end;
     end;
     if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
     begin
       FreeMem(PHashTrieNode(ANode)^.Children);
-      dec(FStats.TotalMemAlloced, Int64(PHashTrieNode(ANode)^.Base.ChildrenCount) * Int64(sizeof(Pointer)));
+      dec(FStats.TotalMemAllocated, Int64(PHashTrieNode(ANode)^.Base.ChildrenCount) * Int64(sizeof(Pointer)));
     end;
   end;
   inherited FreeTrieNode(ANode, Level);
@@ -167,7 +168,7 @@ begin
     inc(Node^.Base.ChildrenCount);
     SetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1), ChildIndex);
     ReallocMem(Node^.Children, Node^.Base.ChildrenCount * sizeof(Pointer));
-    inc(FStats.TotalMemAlloced, sizeof(Pointer));
+    inc(FStats.TotalMemAllocated, sizeof(Pointer));
     PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
   end
   else
@@ -194,7 +195,7 @@ begin
   kvpNode^.KVP.Value := kvp^.Value;
   kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
   PHashTrieNodeArray(Node^.Children)^[ChildIndex] := kvpNode;
-  inc(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
+  inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
 end;
 
 function THashTrie.Find(key: Pointer; out HashTrieNode: PHashTrieNode; out
@@ -245,7 +246,7 @@ begin
       FreeKey(ListNode^.KVP.Key);
       FreeValue(ListNode^.KVP.Value);
       FreeMem(ListNode);
-      dec(FStats.TotalMemAlloced, sizeof(TKeyValuePairNode));
+      dec(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
       Result := True;
       exit;
     end;
@@ -257,6 +258,35 @@ procedure THashTrie.InitIterator(out AIterator: THashTrieIterator);
 begin
   inherited InitIterator(AIterator.Base);
   AIterator.ChildNode := nil;
+end;
+
+procedure THashTrie.Pack;
+label
+  ContinueIteration;
+var
+  It : TTrieIterator;
+  i, AChildIndex : byte;
+  ATrieDepth : Byte;
+  ANode : PHashTrieNode;
+begin
+  ATrieDepth := TrieDepth;
+  inherited InitIterator(It);
+  while inherited Next(It) do
+  begin
+    ANode := PHashTrieNode(It.NodeStack[ATrieDepth - 1]);
+    for i := 0 to ChildrenPerBucket - 1 do
+    begin
+      if GetBusyIndicator(@ANode^.Base, i) then
+      begin
+         AChildIndex := GetChildIndex(PTrieBranchNode(ANode), i);
+         if PHashTrieNodeArray(ANode^.Children)^[AChildIndex] <> nil then
+           goto ContinueIteration;
+      end;
+    end;
+    ANode^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by inherited Pack()
+ContinueIteration:
+  end;
+  inherited Pack;
 end;
 
 function THashTrie.Next(var AIterator: THashTrieIterator): PKeyValuePair;
@@ -273,8 +303,8 @@ begin
     if inherited Next(AIterator.Base) then
     begin
       ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
-      AChildIndex := GetChildIndex(PTrieBranchNode(AIterator.Base.ANodeStack[TrieDepth - 1]), ABitFieldIndex);
-      AIterator.ChildNode := PHashTrieNodeArray(PHashTrieNode(AIterator.Base.ANodeStack[TrieDepth - 1])^.Children)^[AChildIndex];
+      AChildIndex := GetChildIndex(PTrieBranchNode(AIterator.Base.NodeStack[TrieDepth - 1]), ABitFieldIndex);
+      AIterator.ChildNode := PHashTrieNodeArray(PHashTrieNode(AIterator.Base.NodeStack[TrieDepth - 1])^.Children)^[AChildIndex];
       if AIterator.ChildNode = nil then
         Continue;
       Result := @AIterator.ChildNode^.KVP;
@@ -290,4 +320,3 @@ begin
 end;
 
 end.
-
