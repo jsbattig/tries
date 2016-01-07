@@ -137,8 +137,6 @@ type
     FLastMidBranchNode : Byte;
     function NewTrieBranchNode : PTrieBranchNode;
     function AddChild(ANode : PTrieBranchNode; Level : Byte) : Integer;
-    function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte) : Boolean; inline;
-    procedure SetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte; Value : Boolean); inline;
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
     function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
@@ -151,6 +149,8 @@ type
     FCount : Integer;
     function InternalFind(const Data; out ANode: PTrieLeafNode; out AChildIndex:
         Byte; LeafHasChildIndex: Boolean): Boolean;
+    function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte) : Boolean; inline;
+    procedure SetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte; Value : Boolean); inline;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); {$IFDEF FPC} inline; {$ENDIF}
     function GetBitFieldIndex(const Data; Level : Byte) : Byte;
@@ -172,7 +172,7 @@ type
     destructor Destroy; override;
     procedure Clear; virtual;
     procedure InitIterator(out AIterator : TTrieIterator);
-    procedure Pack;
+    procedure Pack; virtual;
     property Count : Integer read FCount;
     property Stats : TTrieStats read FStats;
   end;
@@ -502,7 +502,7 @@ begin
               PackingNode := True;
               dec(AIterator.ANodeStack[AIterator.Level]^.ChildrenCount);
               SetBusyIndicator(AIterator.ANodeStack[AIterator.Level], BitFieldIndex, False);
-              FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)]^.Base, AIterator.Level + 1);
+              FreeTrieNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)], AIterator.Level + 1);
             end
             else { keep going, there's busy nodes on Children }
           else if PTrieNodeArray(PTrieBranchNode(AIterator.ANodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base.Busy = 0 then
