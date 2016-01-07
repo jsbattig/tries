@@ -41,15 +41,17 @@ type
   end;
 
   TAutoFreeMode = (afmFree, afmFreeMem);
+  TDuplicatesMode = (dmNotAllow, dmAllowed, dmReplaceExisting);
 
   { THashTrie }
 
   THashTrie = class(TTrie)
   private
     FHashSize : THashSize;
-    FAllowDuplicates : Boolean;
+    FDuplicatesMode: TDuplicatesMode;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
+    function AttemptReplaceObject(Key, Value: Pointer): Boolean;
     procedure CalcHash(out Hash : THashRecord; key : Pointer);
   protected
     function LeafSize : Cardinal; override;
@@ -61,8 +63,8 @@ type
     function Hash16(key : Pointer) : Word; virtual; abstract;
     function Hash32(key : Pointer): Cardinal; virtual; abstract;
     function Hash64(key : Pointer) : Int64; virtual; abstract;
-    procedure Add(const kvp : TKeyValuePair);
-    function Find(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte) : PKeyValuePair;
+    function Add(const kvp : TKeyValuePair): Boolean;
+    function InternalFind(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte): PKeyValuePair;
     function Remove(key : Pointer) : Boolean;
     function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
     property HashSize : THashSize read FHashSize;
@@ -70,7 +72,7 @@ type
     constructor Create(AHashSize : THashSize);
     procedure InitIterator(out AIterator : THashTrieIterator);
     procedure Pack; override;
-    property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
+    property DuplicatesMode: TDuplicatesMode read FDuplicatesMode write FDuplicatesMode;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
@@ -86,7 +88,7 @@ begin
   inherited Create(HashSizeToTrieDepth[AHashSize]);
   inherited AllowDuplicates := True;
   FHashSize := AHashSize;
-  FAllowDuplicates := True;
+  FDuplicatesMode := dmAllowed;
 end;
 
 procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer);
@@ -152,7 +154,7 @@ begin
   inherited FreeTrieNode(ANode, Level);
 end;
 
-procedure THashTrie.Add(const kvp: TKeyValuePair);
+function THashTrie.Add(const kvp : TKeyValuePair): Boolean;
 var
   Node : PHashTrieNode;
   Hash : THashRecord;
@@ -183,6 +185,11 @@ var
     inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
   end;
 begin
+  if (FDuplicatesMode = dmReplaceExisting) and AttemptReplaceObject(kvp.Key, kvp.Value) then
+  begin
+    Result := False;
+    exit;
+  end;
   CalcHash(Hash, kvp.Key);
   inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
   if not WasNodeBusy then
@@ -199,19 +206,37 @@ begin
     ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
     inc(FCount);
   end;
-  if not FAllowDuplicates then
+  if FDuplicatesMode = dmNotAllow then
     CheckForDuplicates;
   AllocNewKVPAndAddToList;
+  Result := True;
 end;
 
-function THashTrie.Find(key: Pointer; out HashTrieNode: PHashTrieNode; out
-  AChildIndex: Byte): PKeyValuePair;
+function THashTrie.AttemptReplaceObject(Key, Value: Pointer): Boolean;
+var
+  kvp : PKeyValuePair;
+  AChildIndex : Byte;
+  HashTrieNode : PHashTrieNode;
+begin
+  kvp := InternalFind(Pointer(key), HashTrieNode, AChildIndex);
+  if kvp <> nil then
+    begin
+      if AutoFreeValue and (kvp^.Value <> nil) and (kvp^.Value <> Value) then
+        FreeValue(kvp^.Value);
+      kvp^.Value := Value;
+      Result := True;
+      exit;
+    end;
+  Result := False;
+end;
+
+function THashTrie.InternalFind(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte): PKeyValuePair;
 var
   Hash : THashRecord;
   ListNode : PKeyValuePairNode;
 begin
   CalcHash(Hash, key);
-  if InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
+  if inherited InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
   begin
     ListNode := PHashTrieNodeArray(PHashTrieNode(HashTrieNode)^.Children)^[AChildIndex];
     while ListNode <> nil do
@@ -237,7 +262,7 @@ var
   HashTrieNode : PHashTrieNode;
 begin
   Result := False;
-  kvp := Find(key, HashTrieNode, AChildIndex);
+  kvp := InternalFind(key, HashTrieNode, AChildIndex);
   if kvp = nil then
     exit;
   PrevNode := nil;

@@ -41,7 +41,7 @@ type
     procedure FreeKey({%H-}key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs16);
-    procedure Add(const key: AnsiString; Value: Pointer); {$IFDEF UNICODE} overload; {$ENDIF}
+    function Add(const key: AnsiString; Value: Pointer): Boolean;
     function Find(const key: AnsiString; out Value: Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
@@ -49,7 +49,7 @@ type
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
     {$IFDEF UNICODE}
-    procedure Add(const key : String; Value : Pointer); overload;
+    function Add(const key : String; Value : Pointer): Boolean; overload;
     function Find(const key : String; out Value: Pointer): Boolean; overload;
     function Remove(const key: String): Boolean; overload;
     function Next(var AIterator: THashTrieIterator; out key: String; out Value: Pointer): Boolean; overload;
@@ -110,13 +110,13 @@ begin
   {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
 end;
 
-procedure TStringHashTrie.Add(const key: AnsiString; Value: Pointer);
+function TStringHashTrie.Add(const key: AnsiString; Value: Pointer): Boolean;
 var
   kvp : TKeyValuePair;
 begin
   kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
   kvp.Value := Value;
-  inherited Add(kvp);
+  Result := inherited Add(kvp);
   inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 
@@ -129,14 +129,14 @@ begin
     raise EStringHashTrie.Create(SCaseInsensitiveSearchNotSupportedWithUTF16);
 end;
 
-procedure TStringHashTrie.Add(const key : String; Value : Pointer);
+function TStringHashTrie.Add(const key : String; Value : Pointer): Boolean;
 var
   kvp : TKeyValuePair;
 begin
   CheckCaseInsensitiveWithUTF16;
   kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8String(key)));
   kvp.Value := Value;
-  inherited Add(kvp);
+  Result := inherited Add(kvp);
   inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 {$ENDIF}
@@ -148,7 +148,7 @@ var
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
-  kvp := inherited Find(PAnsiChar(key), HashTrieNode, AChildIndex);
+  kvp := inherited InternalFind(PAnsiChar(key), HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value

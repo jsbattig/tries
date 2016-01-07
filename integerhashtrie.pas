@@ -30,7 +30,7 @@ type
     procedure CheckKey(AKey: Cardinal); overload; inline;
     procedure CheckKey(AKey: Word); overload; inline;
     procedure CheckKey(AKey: Int64); overload; inline;
-    procedure InternalAdd(key : Pointer; Value : Pointer);
+    function InternalAdd(key : Pointer; Value : Pointer): Boolean;
     function InternalFind(key: Pointer; out Value: Pointer): Boolean;
   protected
     function CompareKeys(key1, key2 : Pointer) : Boolean; override;
@@ -40,9 +40,9 @@ type
     procedure FreeKey(key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs32);
-    procedure Add(key : Cardinal; Value : Pointer); overload;
-    procedure Add(key : Word; Value : Pointer); overload;
-    procedure Add(key : Int64; Value : Pointer); overload;
+    function Add(key : Cardinal; Value : Pointer): Boolean; overload;
+    function Add(key : Word; Value : Pointer): Boolean; overload;
+    function Add(key : Int64; Value : Pointer): Boolean; overload;
     function Find(key : Cardinal; out Value : Pointer) : Boolean; overload;
     function Find(key : Word; out Value : Pointer) : Boolean; overload;
     function Find(key : Int64; out Value : Pointer) : Boolean; overload;
@@ -106,21 +106,21 @@ begin
     Dispose(PInt64(key));
 end;
 
-procedure TIntegerHashTrie.Add(key: Cardinal; Value: Pointer);
+function TIntegerHashTrie.Add(key : Cardinal; Value : Pointer): Boolean;
 begin
   CheckHashSize(hs32);
   CheckKey(key);
-  InternalAdd({%H-}Pointer(key), Value);
+  Result := InternalAdd({%H-}Pointer(key), Value);
 end;
 
-procedure TIntegerHashTrie.Add(key: Word; Value: Pointer);
+function TIntegerHashTrie.Add(key : Word; Value : Pointer): Boolean;
 begin
   CheckHashSize(hs16);
   CheckKey(key);
-  InternalAdd({%H-}Pointer(key), Value);
+  Result := InternalAdd({%H-}Pointer(key), Value);
 end;
 
-procedure TIntegerHashTrie.Add(key: Int64; Value: Pointer);
+function TIntegerHashTrie.Add(key : Int64; Value : Pointer): Boolean;
 var
   keyInt64 : PInt64;
 begin
@@ -130,9 +130,9 @@ begin
   begin
     New(keyInt64);
     keyInt64^ := key;
-    InternalAdd(keyInt64, Value);
+    Result := InternalAdd(keyInt64, Value);
   end
-  else InternalAdd({%H-}Pointer(key), Value);
+  else Result := InternalAdd({%H-}Pointer(key), Value);
 end;
 
 procedure TIntegerHashTrie.CheckHashSize(ASize: THashSize);
@@ -190,13 +190,13 @@ begin
   else Result := InternalFind({%H-}Pointer(key), Value);;
 end;
 
-procedure TIntegerHashTrie.InternalAdd(key : Pointer; Value : Pointer);
+function TIntegerHashTrie.InternalAdd(key : Pointer; Value : Pointer): Boolean;
 var
   kvp : TKeyValuePair;
 begin
   kvp.Key := key;
   kvp.Value := Value;
-  inherited Add(kvp);
+  Result := inherited Add(kvp);
 end;
 
 function TIntegerHashTrie.InternalFind(key: Pointer; out Value: Pointer):
@@ -206,7 +206,7 @@ var
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
-  kvp := inherited Find(key, HashTrieNode, AChildIndex);
+  kvp := inherited InternalFind(key, HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value
