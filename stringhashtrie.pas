@@ -29,7 +29,7 @@ type
   TStringHashTrie = class(THashTrie)
   private
     FCaseInsensitive: Boolean;
-    procedure InitTraversal(var It : THashTrieIterator; var ADone : Boolean); inline;
+    procedure InitTraversal(out It : THashTrieIterator; out ADone : Boolean); inline;
     {$IFDEF UNICODE}
     procedure CheckCaseInsensitiveWithUTF16; inline;
     {$ENDIF}
@@ -227,8 +227,8 @@ begin
 end;
 {$ENDIF}
 
-procedure TStringHashTrie.InitTraversal(var It : THashTrieIterator; var ADone :
-    Boolean);
+procedure TStringHashTrie.InitTraversal(out It: THashTrieIterator; out
+  ADone: Boolean);
 begin
   InitIterator(It);
   ADone := False;
