@@ -20,3 +20,7 @@
 *.identcache
 *.dsk
 *.~*
+/CnvStrUtils.pas
+/HashTrie.pas
+/Mkregex.pas
+/uCnvPChar.pas

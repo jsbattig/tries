@@ -111,7 +111,7 @@ type
     Level : SmallInt; _Padding2 : array [1..2] of Byte;      // 4..7
     BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;    // 8..39
     NodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode; // 32bits: 40..103  | 64bits: 40..167
-    case Integer of                                          // 32bits: 104..111 | 64bits: 168..172
+    case Integer of                                          // 32bits: 104..111 | 64bits: 168..171
       TrieDepth16Bits       : (LastResult16 : Word;);
       TrieDepth32Bits       : (LastResult32 : Integer;);
       TrieDepth64Bits       : (LastResult64 : _Int64;);
@@ -139,7 +139,7 @@ type
     function AddChild(ANode : PTrieBranchNode; Level : Byte) : Integer;
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
-    function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
+    function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean; inline;
     procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
@@ -572,11 +572,11 @@ begin
           else RaiseTrieDepthError;
         end;
         AIterator.NodeStack[AIterator.Level] := NextNode(PTrieBranchNode(AIterator.NodeStack[AIterator.Level - 1]), AIterator.Level - 1,
-                                                          GetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level - 1]),
-                                                          AIterator.BreadCrumbs[AIterator.Level - 1]));
+                                                         GetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level - 1]),
+                                                         AIterator.BreadCrumbs[AIterator.Level - 1]));
         break;
       end
-      else inc(AIterator.BreadCrumbs[AIterator.Level] );
+      else inc(AIterator.BreadCrumbs[AIterator.Level]);
     end;
     if AIterator.BreadCrumbs[AIterator.Level]  >= ChildrenPerBucket then
       if not IteratorBacktrack(AIterator) then

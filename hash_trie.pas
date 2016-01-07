@@ -61,7 +61,7 @@ type
     function Hash16(key : Pointer) : Word; virtual; abstract;
     function Hash32(key : Pointer): Cardinal; virtual; abstract;
     function Hash64(key : Pointer) : Int64; virtual; abstract;
-    procedure Add(kvp : PKeyValuePair);
+    procedure Add(const kvp : TKeyValuePair);
     function Find(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte) : PKeyValuePair;
     function Remove(key : Pointer) : Boolean;
     function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
@@ -152,15 +152,38 @@ begin
   inherited FreeTrieNode(ANode, Level);
 end;
 
-procedure THashTrie.Add(kvp: PKeyValuePair);
+procedure THashTrie.Add(const kvp: TKeyValuePair);
 var
   Node : PHashTrieNode;
   Hash : THashRecord;
   kvpNode : PKeyValuePairNode;
   WasNodeBusy : Boolean;
   ChildIndex : Byte;
+  procedure CheckForDuplicates;
+  begin
+    kvpNode := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
+    while kvpNode <> nil do
+    begin
+      if CompareKeys(kvpNode^.KVP.Key, kvp.Key) then
+      begin
+        if WasNodeBusy then
+          dec(FCount); // Rollback prior addition of FCount
+        RaiseDuplicateKeysNotAllowed;
+      end;
+      kvpNode := kvpNode^.Next;
+    end;
+  end;
+  procedure AllocNewKVPAndAddToList;
+  begin
+    GetMem(kvpNode, sizeof(TKeyValuePairNode));
+    kvpNode^.KVP.Key := kvp.Key;
+    kvpNode^.KVP.Value := kvp.Value;
+    kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
+    PHashTrieNodeArray(Node^.Children)^[ChildIndex] := kvpNode;
+    inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
+  end;
 begin
-  CalcHash(Hash, kvp^.Key);
+  CalcHash(Hash, kvp.Key);
   inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
   if not WasNodeBusy then
   begin
@@ -177,25 +200,8 @@ begin
     inc(FCount);
   end;
   if not FAllowDuplicates then
-  begin
-    kvpNode := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
-    while kvpNode <> nil do
-    begin
-      if CompareKeys(kvpNode^.KVP.Key, kvp^.Key) then
-      begin
-        if WasNodeBusy then
-          dec(FCount); // Rollback prior addition of FCount
-        RaiseDuplicateKeysNotAllowed;
-      end;
-      kvpNode := kvpNode^.Next;
-    end;
-  end;
-  GetMem(kvpNode, sizeof(TKeyValuePairNode));
-  kvpNode^.KVP.Key := kvp^.Key;
-  kvpNode^.KVP.Value := kvp^.Value;
-  kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
-  PHashTrieNodeArray(Node^.Children)^[ChildIndex] := kvpNode;
-  inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
+    CheckForDuplicates;
+  AllocNewKVPAndAddToList;
 end;
 
 function THashTrie.Find(key: Pointer; out HashTrieNode: PHashTrieNode; out
@@ -262,7 +268,7 @@ end;
 
 procedure THashTrie.Pack;
 label
-  ContinueIteration;
+  ContinueOuterLoopIteration;
 var
   It : TTrieIterator;
   i, AChildIndex : byte;
@@ -280,11 +286,11 @@ begin
       begin
          AChildIndex := GetChildIndex(PTrieBranchNode(ANode), i);
          if PHashTrieNodeArray(ANode^.Children)^[AChildIndex] <> nil then
-           goto ContinueIteration;
+           goto ContinueOuterLoopIteration;
       end;
     end;
     ANode^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by inherited Pack()
-ContinueIteration:
+ContinueOuterLoopIteration:
   end;
   inherited Pack;
 end;
@@ -292,31 +298,29 @@ end;
 function THashTrie.Next(var AIterator: THashTrieIterator): PKeyValuePair;
 var
   AChildIndex, ABitFieldIndex : Byte;
+  ANode : PTrieBranchNode;
+  AKVPNode : PKeyValuePairNode;
 begin
-  if AIterator.ChildNode <> nil then
+  AKVPNode := AIterator.ChildNode;
+  if AKVPNode <> nil then
   begin
-    Result := @AIterator.ChildNode^.KVP;
-    AIterator.ChildNode := AIterator.ChildNode^.Next;
+    Result := @AKVPNode^.KVP;
+    AIterator.ChildNode := AKVPNode^.Next;
     exit;
   end;
-  repeat
-    if inherited Next(AIterator.Base) then
-    begin
-      ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
-      AChildIndex := GetChildIndex(PTrieBranchNode(AIterator.Base.NodeStack[TrieDepth - 1]), ABitFieldIndex);
-      AIterator.ChildNode := PHashTrieNodeArray(PHashTrieNode(AIterator.Base.NodeStack[TrieDepth - 1])^.Children)^[AChildIndex];
-      if AIterator.ChildNode = nil then
-        Continue;
-      Result := @AIterator.ChildNode^.KVP;
-      AIterator.ChildNode := AIterator.ChildNode^.Next;
-      exit;
-    end
-    else
-    begin
-      Result := nil;
-      exit;
-    end;
-  until False;
+  while inherited Next(AIterator.Base) do
+  begin
+    ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
+    ANode := PTrieBranchNode(AIterator.Base.NodeStack[TrieDepth - 1]);
+    AChildIndex := GetChildIndex(ANode, ABitFieldIndex);
+    AKVPNode := PHashTrieNodeArray(ANode^.Children)^[AChildIndex];
+    if AKVPNode = nil then
+      continue;
+    Result := @AKVPNode^.KVP;
+    AIterator.ChildNode := AKVPNode^.Next;
+    exit;
+  end;
+  Result := nil;
 end;
 
 end.

@@ -196,7 +196,7 @@ var
 begin
   kvp.Key := key;
   kvp.Value := Value;
-  inherited Add(@kvp);
+  inherited Add(kvp);
 end;
 
 function TIntegerHashTrie.InternalFind(key: Pointer; out Value: Pointer):
