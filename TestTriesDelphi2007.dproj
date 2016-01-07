@@ -17,10 +17,10 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <Version>7.0</Version>
     <DCC_Define>DEBUG;_CONSOLE_TESTRUNNER</DCC_Define>
-    <DCC_UnitSearchPath>;$(BDS)\Source\DUnit\src</DCC_UnitSearchPath>
-    <DCC_ResourcePath>;$(BDS)\Source\DUnit\src</DCC_ResourcePath>
-    <DCC_ObjPath>;$(BDS)\Source\DUnit\src</DCC_ObjPath>
-    <DCC_IncludePath>;$(BDS)\Source\DUnit\src</DCC_IncludePath>
+    <DCC_UnitSearchPath>$(BDS)\Source\DUnit\src</DCC_UnitSearchPath>
+    <DCC_ResourcePath>$(BDS)\Source\DUnit\src</DCC_ResourcePath>
+    <DCC_ObjPath>$(BDS)\Source\DUnit\src</DCC_ObjPath>
+    <DCC_IncludePath>$(BDS)\Source\DUnit\src</DCC_IncludePath>
     <DCC_ExeOutput>.\bin\win32_d2007\debug</DCC_ExeOutput>
     <DCC_DcuOutput>.\intermediate\win32_d2007\debug</DCC_DcuOutput>
     <DCC_ObjOutput>.\intermediate\win32_d2007\debug</DCC_ObjOutput>
@@ -53,6 +53,7 @@
     <DCCReference Include="pointertrie_test.pas" />
     <DCCReference Include="stringhashtrie.pas" />
     <DCCReference Include="test_integerhashtrie.pas" />
+    <DCCReference Include="test_old_stringhashtrie.pas" />
     <DCCReference Include="test_pointertrie.pas" />
     <DCCReference Include="test_stringhashtrie.pas" />
     <DCCReference Include="trie.pas" />

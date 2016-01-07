@@ -1,4 +1,4 @@
-unit Test_StringHashTrie;
+﻿unit Test_StringHashTrie;
 
 {$IFDEF FPC}
 {$mode objfpc}{$H+}
@@ -28,27 +28,36 @@ type
   protected
     procedure SetUp; override;
     procedure TearDown; override;
-    procedure TraverseMeth({%H-}UserData: Pointer; Value: PAnsiChar; Data: TObject; var
+    procedure TraverseMeth({%H-}UserData: Pointer; Key: PAnsiChar; Data: TObject; var
         {%H-}Done: Boolean);
+    {$IFDEF UNICODE}
+    procedure TraverseMethUnicode({%H-}UserData: Pointer; Key: PChar; Data:
+        TObject; var Done: Boolean);
+    {$ENDIF}
   published
     procedure TestCreate;
     procedure TestAddAndFind;
     procedure TestAddAndTraverse;
     procedure TestAddAndFindCaseInsensitive;
     procedure TestAddAndFindManyEntries;
-    procedure TestAddAndIterateManyEntries;
+    procedure TestAddIterateAndFindManyEntries;
     procedure TestAddDuplicateAndFind;
     procedure TestAddDuplicatesFailure;
     procedure TestAddAndFindHash16;
     procedure TestAddAndFindHash64;
     {$IFDEF HasGenerics}
     procedure TestAddAndFindManyEntriesUsingTDictionary;
+    procedure TestAddIterateAndFindManyEntriesTDictionary;
     {$ENDIF}
     procedure TestRemoveAndPack;
     procedure TestIterator;
     procedure TestIteratorDuplicateString;
     procedure TestAutoFreeValue;
     procedure TestAddTwoValuesAndIterate;
+    {$IFDEF UNICODE}
+    procedure TestUnicodeChars;
+    procedure TestAddAndTraverseUnicode;
+    {$ENDIF}
   end;
 
 implementation
@@ -106,9 +115,9 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestAddAndIterateManyEntries;
+procedure TStringHashTrieTest.TestAddIterateAndFindManyEntries;
 const
-  Count = 1024 * 256;
+  Count = 1024 * 1024;
 var
   i, Cnt : integer;
   AIterator : THashTrieIterator;
@@ -120,7 +129,10 @@ begin
   FStrHashTrie.InitIterator(AIterator);
   Cnt := 0;
   while FStrHashTrie.Next(AIterator, AKey, AValue) do
+  begin
+    Check(FStrHashTrie.Find(AKey, AValue), 'Item not found');
     inc(Cnt);
+  end;
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
@@ -177,6 +189,8 @@ var
   Value : Pointer;
   PrevMemAllocated : Cardinal;
 begin
+  FStrHashTrie.Free;
+  FStrHashTrie := TStringHashTrie.Create(hs32);
   FStrHashTrie.Add('Hello World', Self);
   CheckEquals(sizeof(TTrieBranchNode) * 8 + length('Hello World') + 1 +
               sizeof(Pointer) * 7 + sizeof(TKeyValuePairNode) * 1,
@@ -282,8 +296,8 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.CaseInsensitive := True;
-  FStrHashTrie.Add('Hello World', Self);
-  Check(FStrHashTrie.Find('hello world', Value), 'Item not found');
+  FStrHashTrie.Add(AnsiString('Hello World'), Self);
+  Check(FStrHashTrie.Find(AnsiString('hello world'), Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
@@ -330,14 +344,65 @@ begin
     FDict.Free;
   end;
 end;
+
+procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesTDictionary;
+const
+  Count = 1024 * 1024;
+var
+  i, Cnt : integer;
+  AValue : Pointer;
+  FDict : TDictionary<AnsiString, Pointer>;
+  Enum : TPair<AnsiString, Pointer>;
+begin
+  FDict := TDictionary<AnsiString, Pointer>.Create;
+  try
+    for i := 0 to Count - 1 do
+      FDict.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+    Cnt := 0;
+    for Enum in FDict do
+    begin
+      Check(FDict.TryGetValue(Enum.Key, AValue), 'Item not found');
+      inc(Cnt);
+    end;
+    CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
+  finally
+    FDict.Free;
+  end;
+end;
 {$ENDIF}
 
-procedure TStringHashTrieTest.TraverseMeth(UserData: Pointer; Value: PAnsiChar;
+{$IFDEF UNICODE}
+procedure TStringHashTrieTest.TestUnicodeChars;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.Add('Привет мир', Self);
+  Check(FStrHashTrie.Find('Привет мир', Value), 'Item not found');
+  Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+end;
+{$ENDIF}
+
+procedure TStringHashTrieTest.TraverseMeth(UserData: Pointer; Key: PAnsiChar;
     Data: TObject; var Done: Boolean);
 begin
-  CheckEquals('Hello World', {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrPas(Value), 'Item not found');
+  CheckEquals('Hello World', {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrPas(Key), 'Item not found');
   Check(Data = TObject(Self), 'Item found doesn''t match expected value');
 end;
+
+{$IFDEF UNICODE}
+procedure TStringHashTrieTest.TestAddAndTraverseUnicode;
+begin
+  FStrHashTrie.Add('Привет мир', Self);
+  FStrHashTrie.Traverse(nil, TraverseMethUnicode);
+end;
+
+procedure TStringHashTrieTest.TraverseMethUnicode({%H-}UserData: Pointer; Key:
+    PChar; Data: TObject; var Done: Boolean);
+begin
+  CheckEquals('Привет мир', StrPas(Key), 'Item not found');
+  Check(Data = TObject(Self), 'Item found doesn''t match expected value');
+end;
+{$ENDIF}
 
 initialization
   {$IFDEF FPC}

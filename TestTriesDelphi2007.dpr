@@ -27,7 +27,8 @@ uses
   test_stringhashtrie in 'test_stringhashtrie.pas',
   trie in 'trie.pas',
   usuperfasthash in 'usuperfasthash.pas',
-  test_pointertrie in 'test_pointertrie.pas';
+  test_pointertrie in 'test_pointertrie.pas',
+  test_old_stringhashtrie in 'test_old_stringhashtrie.pas';
 
 {$R *.RES}
 
