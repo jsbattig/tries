@@ -14,6 +14,14 @@ type
     Data: TObject; var Done: Boolean);
   TIntHashTraverseMeth = procedure(UserData: Pointer; Value: integer;
     Data: TObject; var Done: Boolean) of object;
+  TWordHashTraverseProc = procedure(UserData: Pointer; Value: Word;
+    Data: TObject; var Done: Boolean);
+  TWordHashTraverseMeth = procedure(UserData: Pointer; Value: Word;
+    Data: TObject; var Done: Boolean) of object;
+  TInt64HashTraverseProc = procedure(UserData: Pointer; Value: Int64;
+    Data: TObject; var Done: Boolean);
+  TInt64HashTraverseMeth = procedure(UserData: Pointer; Value: Int64;
+    Data: TObject; var Done: Boolean) of object;
   EIntegerHashTrie = class(ETrie);
   { TIntegerHashTrie }
   TIntegerHashTrie = class(THashTrie)
@@ -46,6 +54,10 @@ type
     function Next(var AIterator : THashTrieIterator; out key : Int64; out Value : Pointer) : Boolean; overload;
     procedure Traverse(UserData: Pointer; UserProc: TIntHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TIntHashTraverseMeth); overload;
+    procedure Traverse(UserData: Pointer; UserProc: TWordHashTraverseProc); overload;
+    procedure Traverse(UserData: Pointer; UserProc: TWordHashTraverseMeth); overload;
+    procedure Traverse(UserData: Pointer; UserProc: TInt64HashTraverseProc); overload;
+    procedure Traverse(UserData: Pointer; UserProc: TInt64HashTraverseMeth); overload;
   end;
 
 implementation
@@ -294,6 +306,62 @@ procedure TIntegerHashTrie.Traverse(UserData: Pointer; UserProc:
 var
   It : THashTrieIterator;
   Key : Cardinal;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer;
+  UserProc: TWordHashTraverseProc);
+var
+  It : THashTrieIterator;
+  Key : Word;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer;
+  UserProc: TWordHashTraverseMeth);
+var
+  It : THashTrieIterator;
+  Key : Word;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer;
+  UserProc: TInt64HashTraverseProc);
+var
+  It : THashTrieIterator;
+  Key : Int64;
+  Value : Pointer;
+  Done : Boolean;
+begin
+  InitIterator(It);
+  Done := False;
+  while (not Done) and Next(It, Key, Value) do
+    UserProc(UserData, Key, TObject(Value), Done);
+end;
+
+procedure TIntegerHashTrie.Traverse(UserData: Pointer;
+  UserProc: TInt64HashTraverseMeth);
+var
+  It : THashTrieIterator;
+  Key : Int64;
   Value : Pointer;
   Done : Boolean;
 begin
