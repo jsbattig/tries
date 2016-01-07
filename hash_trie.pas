@@ -69,6 +69,7 @@ type
   public
     constructor Create(AHashSize : THashSize);
     procedure InitIterator(out AIterator : THashTrieIterator);
+    procedure Pack; override;
     property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
@@ -259,6 +260,35 @@ begin
   AIterator.ChildNode := nil;
 end;
 
+procedure THashTrie.Pack;
+label
+  ContinueIteration;
+var
+  It : TTrieIterator;
+  i, AChildIndex : byte;
+  ATrieDepth : Byte;
+  ANode : PHashTrieNode;
+begin
+  ATrieDepth := TrieDepth;
+  inherited InitIterator(It);
+  while inherited Next(It) do
+  begin
+    ANode := PHashTrieNode(It.ANodeStack[ATrieDepth - 1]);
+    for i := 0 to ChildrenPerBucket - 1 do
+    begin
+      if GetBusyIndicator(@ANode^.Base, i) then
+      begin
+         AChildIndex := GetChildIndex(ANode, i);
+         if PHashTrieNodeArray(ANode^.Children)^[AChildIndex] <> nil then
+           goto ContinueIteration;
+      end;
+    end;
+    ANode^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by inherited Pack()
+ContinueIteration:
+  end;
+  inherited Pack;
+end;
+
 function THashTrie.Next(var AIterator: THashTrieIterator): PKeyValuePair;
 var
   AChildIndex, ABitFieldIndex : Byte;
@@ -290,4 +320,3 @@ begin
 end;
 
 end.
-

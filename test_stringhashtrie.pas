@@ -175,11 +175,19 @@ end;
 procedure TStringHashTrieTest.TestRemove;
 var
   Value : Pointer;
+  PrevMemAllocated : Cardinal;
 begin
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  PrevMemAllocated := FStrHashTrie.Stats.TotalMemAlloced;
+  FStrHashTrie.Pack;
+  CheckEquals(PrevMemAllocated, FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated doesn''t match');
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   FStrHashTrie.Remove('Hello World');
   Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  FStrHashTrie.Pack;
+  CheckEquals(1, FStrHashTrie.Stats.NodeCount, 'Node count should be zero after Pack');
+  CheckEquals(sizeof(TTrieBranchNode), FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated should match size of TTrieBranchNode');
 end;
 
 procedure TStringHashTrieTest.TestIterator;
