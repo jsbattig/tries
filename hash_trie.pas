@@ -278,7 +278,7 @@ begin
     begin
       if GetBusyIndicator(@ANode^.Base, i) then
       begin
-         AChildIndex := GetChildIndex(ANode, i);
+         AChildIndex := GetChildIndex(PTrieBranchNode(ANode), i);
          if PHashTrieNodeArray(ANode^.Children)^[AChildIndex] <> nil then
            goto ContinueIteration;
       end;
