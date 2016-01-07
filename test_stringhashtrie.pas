@@ -180,23 +180,23 @@ begin
   FStrHashTrie.Add('Hello World', Self);
   CheckEquals(sizeof(TTrieBranchNode) * 8 + length('Hello World') + 1 +
               sizeof(Pointer) * 7 + sizeof(TKeyValuePairNode) * 1,
-              FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated should match size of TTrieBranchNode');
+              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
   FStrHashTrie.Add('Hello World 2', Self);
   CheckEquals(15, FStrHashTrie.Stats.NodeCount, 'Node count should be 8 after Pack');
   CheckEquals(sizeof(TTrieBranchNode) * 15 + length('Hello World 2') + 1 + length('Hello World') + 1 +
               sizeof(Pointer) * 14 + sizeof(TKeyValuePairNode) * 2,
-              FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated should match size of TTrieBranchNode');
+              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  PrevMemAllocated := FStrHashTrie.Stats.TotalMemAlloced;
+  PrevMemAllocated := FStrHashTrie.Stats.TotalMemAllocated;
   FStrHashTrie.Pack;
-  CheckEquals(PrevMemAllocated, FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated doesn''t match');
+  CheckEquals(PrevMemAllocated, FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated doesn''t match');
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   FStrHashTrie.Remove('Hello World');
   Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
   FStrHashTrie.Pack;
   CheckEquals(8, FStrHashTrie.Stats.NodeCount, 'Node count should be 8 after Pack');
   CheckEquals(sizeof(TTrieBranchNode) * 8 + length('Hello World 2') + 1 + sizeof(Pointer) * 7 + sizeof(TKeyValuePairNode),
-              FStrHashTrie.Stats.TotalMemAlloced, 'Mem allocated should match size of TTrieBranchNode');
+              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
 end;
 
 procedure TStringHashTrieTest.TestIterator;
