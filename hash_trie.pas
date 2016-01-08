@@ -14,6 +14,7 @@ type
   PKeyValuePair = ^TKeyValuePair;
   TKeyValuePair = record
     Key : Pointer;
+    KeySize : Cardinal;
     Value : Pointer;
   end;
   PKeyValuePairNode = ^TKeyValuePairNode;
@@ -51,21 +52,24 @@ type
     FDuplicatesMode: TDuplicatesMode;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
-    function AttemptReplaceObject(Key, Value: Pointer): Boolean;
-    procedure CalcHash(out Hash : THashRecord; key : Pointer);
+    function AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value: Pointer):
+        Boolean;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal);
   protected
     function LeafSize : Cardinal; override;
     procedure InitLeaf(var Leaf); override;
     procedure FreeKey({%H-}key : Pointer); virtual;
     procedure FreeValue({%H-}value : Pointer); virtual;
-    function CompareKeys(key1, key2 : Pointer) : Boolean; virtual; abstract;
+    function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
+        KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); override;
-    function Hash16(key : Pointer) : Word; virtual; abstract;
-    function Hash32(key : Pointer): Cardinal; virtual; abstract;
-    function Hash64(key : Pointer) : Int64; virtual; abstract;
+    function Hash16(key: Pointer; KeySize: Cardinal): Word; virtual; abstract;
+    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; virtual; abstract;
+    function Hash64(key: Pointer; KeySize: Cardinal): Int64; virtual; abstract;
     function Add(const kvp : TKeyValuePair): Boolean;
-    function InternalFind(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte): PKeyValuePair;
-    function Remove(key : Pointer) : Boolean;
+    function InternalFind(key: Pointer; KeySize: Cardinal; out HashTrieNode:
+        PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
+    function Remove(key: Pointer; KeySize: Cardinal): Boolean;
     function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
     property HashSize : THashSize read FHashSize;
   public
@@ -91,12 +95,13 @@ begin
   FDuplicatesMode := dmAllowed;
 end;
 
-procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer);
+procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize:
+    Cardinal);
 begin
   case FHashSize of
-    hs16 : Hash.Hash16 := Hash16(key);
-    hs32 : Hash.Hash32 := Hash32(key);
-    hs64 : Hash.Hash64 := Hash64(key);
+    hs16 : Hash.Hash16 := Hash16(key, KeySize);
+    hs32 : Hash.Hash32 := Hash32(key, KeySize);
+    hs64 : Hash.Hash64 := Hash64(key, KeySize);
     else RaiseTrieDepthError;
   end;
 end;
@@ -166,7 +171,7 @@ var
     kvpNode := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
     while kvpNode <> nil do
     begin
-      if CompareKeys(kvpNode^.KVP.Key, kvp.Key) then
+      if CompareKeys(kvpNode^.KVP.Key, kvpNode^.KVP.KeySize, kvp.Key, kvp.KeySize) then
       begin
         if WasNodeBusy then
           dec(FCount); // Rollback prior addition of FCount
@@ -178,19 +183,18 @@ var
   procedure AllocNewKVPAndAddToList;
   begin
     GetMem(kvpNode, sizeof(TKeyValuePairNode));
-    kvpNode^.KVP.Key := kvp.Key;
-    kvpNode^.KVP.Value := kvp.Value;
+    kvpNode^.KVP := kvp;
     kvpNode^.Next := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
     PHashTrieNodeArray(Node^.Children)^[ChildIndex] := kvpNode;
     inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
   end;
 begin
-  if (FDuplicatesMode = dmReplaceExisting) and AttemptReplaceObject(kvp.Key, kvp.Value) then
+  if (FDuplicatesMode = dmReplaceExisting) and AttemptReplaceObject(kvp.Key, kvp.KeySize, kvp.Value) then
   begin
     Result := False;
     exit;
   end;
-  CalcHash(Hash, kvp.Key);
+  CalcHash(Hash, kvp.Key, kvp.KeySize);
   inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
   if not WasNodeBusy then
   begin
@@ -206,19 +210,20 @@ begin
     ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
     inc(FCount);
   end;
-  if FDuplicatesMode = dmNotAllow then
+  if WasNodeBusy and (FDuplicatesMode = dmNotAllow) then
     CheckForDuplicates;
   AllocNewKVPAndAddToList;
   Result := True;
 end;
 
-function THashTrie.AttemptReplaceObject(Key, Value: Pointer): Boolean;
+function THashTrie.AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value:
+    Pointer): Boolean;
 var
   kvp : PKeyValuePair;
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
-  kvp := InternalFind(Pointer(key), HashTrieNode, AChildIndex);
+  kvp := InternalFind(Pointer(key), KeySize, HashTrieNode, AChildIndex);
   if kvp <> nil then
     begin
       if AutoFreeValue and (kvp^.Value <> nil) and (kvp^.Value <> Value) then
@@ -230,18 +235,19 @@ begin
   Result := False;
 end;
 
-function THashTrie.InternalFind(key : Pointer; out HashTrieNode : PHashTrieNode; out AChildIndex : Byte): PKeyValuePair;
+function THashTrie.InternalFind(key: Pointer; KeySize: Cardinal; out
+    HashTrieNode: PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
 var
   Hash : THashRecord;
   ListNode : PKeyValuePairNode;
 begin
-  CalcHash(Hash, key);
+  CalcHash(Hash, key, KeySize);
   if inherited InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
   begin
     ListNode := PHashTrieNodeArray(PHashTrieNode(HashTrieNode)^.Children)^[AChildIndex];
     while ListNode <> nil do
     begin
-      if CompareKeys(ListNode^.KVP.Key, key) then
+      if CompareKeys(ListNode^.KVP.Key, ListNode^.KVP.KeySize, key, KeySize) then
       begin
         Result := @ListNode^.KVP;
         exit;
@@ -254,7 +260,7 @@ end;
 
 (* We won't call inherited Remove function in purpose. We want to keep our ChildIndex
    field intact and it's ChildIndex reference *)
-function THashTrie.Remove(key: Pointer): Boolean;
+function THashTrie.Remove(key: Pointer; KeySize: Cardinal): Boolean;
 var
   kvp : PKeyValuePair;
   AChildIndex : Byte;
@@ -262,14 +268,14 @@ var
   HashTrieNode : PHashTrieNode;
 begin
   Result := False;
-  kvp := InternalFind(key, HashTrieNode, AChildIndex);
+  kvp := InternalFind(key, KeySize, HashTrieNode, AChildIndex);
   if kvp = nil then
     exit;
   PrevNode := nil;
   ListNode := PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex];
   while ListNode <> nil do
   begin
-    if CompareKeys(ListNode^.KVP.Key, key) then
+    if CompareKeys(ListNode^.KVP.Key, ListNode^.KVP.KeySize, key, KeySize) then
     begin
       if PrevNode = nil then
         PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex] := ListNode^.Next

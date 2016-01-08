@@ -34,14 +34,15 @@ type
     procedure CheckCaseInsensitiveWithUTF16; inline;
     {$ENDIF}
   protected
-    function CompareKeys(key1, key2 : Pointer) : Boolean; override;
-    function Hash32(key : Pointer): Cardinal; override;
-    function Hash16(key : Pointer) : Word; override;
-    function Hash64(key : Pointer) : Int64; override;
+    function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
+        KeySize2: Cardinal): Boolean; override;
+    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
+    function Hash16(key: Pointer; KeySize: Cardinal): Word; override;
+    function Hash64(key: Pointer; KeySize: Cardinal): Int64; override;
     procedure FreeKey({%H-}key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs16);
-    function Add(const key: AnsiString; Value: Pointer): Boolean;
+    function Add(const key: AnsiString; Value: Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Find(const key: AnsiString; out Value: Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
@@ -71,36 +72,35 @@ begin
   inherited Create(AHashSize);
 end;
 
-function TStringHashTrie.CompareKeys(key1, key2: Pointer): Boolean;
+function TStringHashTrie.CompareKeys(key1: Pointer; KeySize1: Cardinal; key2:
+    Pointer; KeySize2: Cardinal): Boolean;
 begin
   if FCaseInsensitive then
-    Result := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}AnsiStrLIComp(PAnsiChar(key1), PAnsiChar(key2), Cardinal(-1)) = 0
+    Result := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrIComp(PAnsiChar(key1), PAnsiChar(key2)) = 0
   else Result := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrComp(PAnsiChar(key1), PAnsiChar(key2)) = 0;
 end;
 
-function TStringHashTrie.Hash32(key : Pointer): Cardinal;
+function TStringHashTrie.Hash32(key: Pointer; KeySize: Cardinal): Cardinal;
 begin
-  Result := SuperFastHash(PAnsiChar(key), {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(key)), FCaseInsensitive);
+  Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
 end;
 
-function TStringHashTrie.Hash16(key: Pointer): Word;
+function TStringHashTrie.Hash16(key: Pointer; KeySize: Cardinal): Word;
 var
   AHash32 : Cardinal;
 begin
-  AHash32 := Hash32(key);
+  AHash32 := Hash32(key, KeySize);
   Result := AHash32;
   AHash32 := AHash32 shr 16;
   inc(Result, Word(AHash32));
 end;
 
-function TStringHashTrie.Hash64(key: Pointer): Int64;
+function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal): Int64;
 var
   AHash32_1, AHash32_2 : Cardinal;
-  Len : Integer;
 begin
-  Len := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(key));
-  AHash32_1 := SuperFastHash(PAnsiChar(key), Len div 2, FCaseInsensitive);
-  AHash32_2 := SuperFastHash(@PAnsiChar(key)[Len div 2], Len - (Len div 2), FCaseInsensitive);
+  AHash32_1 := SuperFastHash(PAnsiChar(key), KeySize div 2, FCaseInsensitive);
+  AHash32_2 := SuperFastHash(@PAnsiChar(key)[KeySize div 2], KeySize - (KeySize div 2), FCaseInsensitive);
   Result := Int64(AHash32_1) + Int64(AHash32_2) shl 32;
 end;
 
@@ -116,6 +116,7 @@ var
 begin
   kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
   kvp.Value := Value;
+  kvp.KeySize := length(Key);
   Result := inherited Add(kvp);
   inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
@@ -132,10 +133,13 @@ end;
 function TStringHashTrie.Add(const key : String; Value : Pointer): Boolean;
 var
   kvp : TKeyValuePair;
+  UTF8Str : UTF8String;
 begin
   CheckCaseInsensitiveWithUTF16;
-  kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8String(key)));
+  UTF8Str := UTF8String(key);
+  kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8Str));
   kvp.Value := Value;
+  kvp.KeySize := length(UTF8Str);
   Result := inherited Add(kvp);
   inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
@@ -148,7 +152,7 @@ var
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
-  kvp := inherited InternalFind(PAnsiChar(key), HashTrieNode, AChildIndex);
+  kvp := inherited InternalFind(PAnsiChar(key), length(key), HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value
@@ -161,9 +165,11 @@ var
   kvp : PKeyValuePair;
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
+  UTF8Str : UTF8String;
 begin
   CheckCaseInsensitiveWithUTF16;
-  kvp := inherited Find(PAnsiChar(UTF8String(key)), HashTrieNode, AChildIndex);
+  UTF8Str := UTF8String(key);
+  kvp := inherited InternalFind(PAnsiChar(UTF8Str), length(UTF8Str), HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value
@@ -173,7 +179,7 @@ end;
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;
 begin
-  Result := inherited Remove(PAnsiChar(key));
+  Result := inherited Remove(PAnsiChar(key), length(key));
 end;
 
 function TStringHashTrie.Next(var AIterator: THashTrieIterator; out key:
@@ -223,7 +229,7 @@ end;
 function TStringHashTrie.Remove(const key: String): Boolean;
 begin
   CheckCaseInsensitiveWithUTF16;
-  Result := inherited Remove(PAnsiChar(UTF8String(key)));
+  Result := inherited Remove(PAnsiChar(UTF8String(key)), length(key));
 end;
 {$ENDIF}
 
