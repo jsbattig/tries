@@ -52,9 +52,7 @@ type
     FDuplicatesMode: TDuplicatesMode;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
-    function AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value: Pointer):
-        Boolean;
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal);
+    function AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value: Pointer): Boolean;
   protected
     function LeafSize : Cardinal; override;
     procedure InitLeaf(var Leaf); override;
@@ -63,9 +61,10 @@ type
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); override;
-    function Hash16(key: Pointer; KeySize: Cardinal): Word; virtual; abstract;
-    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; virtual; abstract;
-    function Hash64(key: Pointer; KeySize: Cardinal): Int64; virtual; abstract;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal); virtual;
+    function Hash16(key: Pointer; KeySize: Cardinal): Word; virtual;
+    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; virtual;
+    function Hash64(key: Pointer; KeySize: Cardinal): Int64; virtual;
     function Add(const kvp : TKeyValuePair): Boolean;
     function InternalFind(key: Pointer; KeySize: Cardinal; out HashTrieNode:
         PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
@@ -83,6 +82,9 @@ type
 
 implementation
 
+uses
+  uSuperFastHash;
+
 { THashTrie }
 
 constructor THashTrie.Create(AHashSize: THashSize);
@@ -93,6 +95,30 @@ begin
   inherited AllowDuplicates := True;
   FHashSize := AHashSize;
   FDuplicatesMode := dmAllowed;
+end;
+
+function THashTrie.Hash16(key: Pointer; KeySize: Cardinal): Word;
+var
+  AHash32 : Cardinal;
+begin
+  AHash32 := Hash32(key, KeySize);
+  Result := AHash32;
+  AHash32 := AHash32 shr 16;
+  inc(Result, Word(AHash32));
+end;
+
+function THashTrie.Hash32(key: Pointer; KeySize: Cardinal): Cardinal;
+begin
+  Result := SuperFastHash(key, KeySize, False);
+end;
+
+function THashTrie.Hash64(key: Pointer; KeySize: Cardinal): Int64;
+var
+  AHash32_1, AHash32_2 : Cardinal;
+begin
+  AHash32_1 := Hash32(PAnsiChar(key), KeySize div 2);
+  AHash32_2 := Hash32(@PAnsiChar(key)[KeySize div 2], KeySize - (KeySize div 2));
+  Result := Int64(AHash32_1) + Int64(AHash32_2) shl 32;
 end;
 
 procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize:
