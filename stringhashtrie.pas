@@ -37,8 +37,6 @@ type
     function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
         {%H-}KeySize2: Cardinal): Boolean; override;
     function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
-    function Hash16(key: Pointer; KeySize: Cardinal): Word; override;
-    function Hash64(key: Pointer; KeySize: Cardinal): Int64; override;
     procedure FreeKey({%H-}key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs16);
@@ -83,25 +81,6 @@ end;
 function TStringHashTrie.Hash32(key: Pointer; KeySize: Cardinal): Cardinal;
 begin
   Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
-end;
-
-function TStringHashTrie.Hash16(key: Pointer; KeySize: Cardinal): Word;
-var
-  AHash32 : Cardinal;
-begin
-  AHash32 := Hash32(key, KeySize);
-  Result := AHash32;
-  AHash32 := AHash32 shr 16;
-  inc(Result, Word(AHash32));
-end;
-
-function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal): Int64;
-var
-  AHash32_1, AHash32_2 : Cardinal;
-begin
-  AHash32_1 := SuperFastHash(PAnsiChar(key), KeySize div 2, FCaseInsensitive);
-  AHash32_2 := SuperFastHash(@PAnsiChar(key)[KeySize div 2], KeySize - (KeySize div 2), FCaseInsensitive);
-  Result := Int64(AHash32_1) + Int64(AHash32_2) shl 32;
 end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
