@@ -52,7 +52,6 @@ type
     FDuplicatesMode: TDuplicatesMode;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
-    function AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value: Pointer): Boolean;
   protected
     function LeafSize : Cardinal; override;
     procedure InitLeaf(var Leaf); override;
@@ -192,19 +191,28 @@ var
   kvpNode : PKeyValuePairNode;
   WasNodeBusy : Boolean;
   ChildIndex : Byte;
-  procedure CheckForDuplicates;
+  function CheckForDuplicatesOrReplaceNode : Boolean;
   begin
     kvpNode := PHashTrieNodeArray(Node^.Children)^[ChildIndex];
     while kvpNode <> nil do
     begin
       if CompareKeys(kvpNode^.KVP.Key, kvpNode^.KVP.KeySize, kvp.Key, kvp.KeySize) then
       begin
-        if WasNodeBusy then
-          dec(FCount); // Rollback prior addition of FCount
-        RaiseDuplicateKeysNotAllowed;
+        dec(FCount); // Rollback prior addition of FCount
+        if FDuplicatesMode = dmNotAllow then
+          RaiseDuplicateKeysNotAllowed
+        else
+        begin
+          if AutoFreeValue and (kvpNode^.KVP.Value <> nil) and (kvpNode^.KVP.Value <> kvp.Value) then
+            FreeValue(kvpNode^.KVP.Value);
+          kvpNode^.KVP.Value := kvp.Value;
+          Result := True;
+          exit;
+        end;
       end;
       kvpNode := kvpNode^.Next;
     end;
+    Result := False;
   end;
   procedure AllocNewKVPAndAddToList;
   begin
@@ -215,11 +223,6 @@ var
     inc(FStats.TotalMemAllocated, sizeof(TKeyValuePairNode));
   end;
 begin
-  if (FDuplicatesMode = dmReplaceExisting) and AttemptReplaceObject(kvp.Key, kvp.KeySize, kvp.Value) then
-  begin
-    Result := False;
-    exit;
-  end;
   CalcHash(Hash, kvp.Key, kvp.KeySize);
   inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
   if not WasNodeBusy then
@@ -236,29 +239,14 @@ begin
     ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
     inc(FCount);
   end;
-  if WasNodeBusy and (FDuplicatesMode = dmNotAllow) then
-    CheckForDuplicates;
+  if WasNodeBusy and (FDuplicatesMode in [dmNotAllow, dmReplaceExisting]) and
+     CheckForDuplicatesOrReplaceNode then
+  begin
+    Result := False;
+    exit;
+  end;
   AllocNewKVPAndAddToList;
   Result := True;
-end;
-
-function THashTrie.AttemptReplaceObject(Key: Pointer; KeySize: Cardinal; Value:
-    Pointer): Boolean;
-var
-  kvp : PKeyValuePair;
-  AChildIndex : Byte;
-  HashTrieNode : PHashTrieNode;
-begin
-  kvp := InternalFind(Pointer(key), KeySize, HashTrieNode, AChildIndex);
-  if kvp <> nil then
-    begin
-      if AutoFreeValue and (kvp^.Value <> nil) and (kvp^.Value <> Value) then
-        FreeValue(kvp^.Value);
-      kvp^.Value := Value;
-      Result := True;
-      exit;
-    end;
-  Result := False;
 end;
 
 function THashTrie.InternalFind(key: Pointer; KeySize: Cardinal; out
