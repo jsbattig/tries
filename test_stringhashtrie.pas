@@ -37,6 +37,7 @@ type
   published
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddReplaceAndFind;
     procedure TestAddAndTraverse;
     procedure TestAddAndFindCaseInsensitive;
     procedure TestAddAndFindManyEntries;
@@ -152,7 +153,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddDuplicatesFailure;
 begin
-  FStrHashTrie.AllowDuplicates := False;
+  FStrHashTrie.DuplicatesMode := dmNotAllow;
   FStrHashTrie.Add('Hello World', Self);
   try
     FStrHashTrie.Add('Hello World', Self);
@@ -283,6 +284,22 @@ end;
 procedure TStringHashTrieTest.TearDown;
 begin
   FStrHashTrie.Free;
+end;
+
+procedure TStringHashTrieTest.TestAddReplaceAndFind;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.DuplicatesMode := dmReplaceExisting;
+  FStrHashTrie.Add('Hello World', Self);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+  FStrHashTrie.Add('Hello World', FStrHashTrie);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  Check(Value = Pointer(FStrHashTrie), 'Item found doesn''t match expected value');
+  CheckEquals(1, FStrHashTrie.Count, 'There should be only one item in the hashtrie');
+  Check(FStrHashTrie.Remove('Hello World'), 'Remove should return true');
+  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
 end;
 
 procedure TStringHashTrieTest.TestAddAndTraverse;

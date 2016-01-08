@@ -28,6 +28,7 @@ type
     procedure TestAddFindAndRemove32;
     procedure TestAddFindAndRemove16;
     procedure TestAddFindAndRemove64;
+    procedure TestAddReplaceAndFind;
     procedure TestAddSomeElements;
     procedure TestAddZeroKey;
     procedure TestCreateIntegerHashTrie;
@@ -103,6 +104,23 @@ begin
   Check(Value = Pointer(Self), 'Value should be equals to Self');
   Check(FIntHashTrie.Remove(Key), 'Key was not found?');
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
+end;
+
+procedure TIntegerHashTrieTest.TestAddReplaceAndFind;
+var
+  Value : Pointer;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie.DuplicatesMode := dmReplaceExisting;
+  FIntHashTrie.Add(Cardinal(1), Self);
+  Check(FIntHashTrie.Find(Cardinal(1), Value), 'Item not found');
+  Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+  FIntHashTrie.Add(Cardinal(1), FIntHashTrie);
+  Check(FIntHashTrie.Find(Cardinal(1), Value), 'Item not found');
+  Check(Value = Pointer(FIntHashTrie), 'Item found doesn''t match expected value');
+  CheckEquals(1, FIntHashTrie.Count, 'There should be only one item in the hashtrie');
+  Check(FIntHashTrie.Remove(Cardinal(1)), 'Remove should return true');
+  Check(not FIntHashTrie.Find(Cardinal(1), Value), 'Item found');
 end;
 
 procedure TIntegerHashTrieTest.TestAddSomeElements;
