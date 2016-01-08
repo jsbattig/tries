@@ -34,8 +34,8 @@ type
     procedure CheckCaseInsensitiveWithUTF16; inline;
     {$ENDIF}
   protected
-    function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
-        KeySize2: Cardinal): Boolean; override;
+    function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
+        {%H-}KeySize2: Cardinal): Boolean; override;
     function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
     function Hash16(key: Pointer; KeySize: Cardinal): Word; override;
     function Hash64(key: Pointer; KeySize: Cardinal): Int64; override;

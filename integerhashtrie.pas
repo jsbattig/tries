@@ -36,9 +36,9 @@ type
   protected
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; override;
-    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
-    function Hash16(key: Pointer; KeySize: Cardinal): Word; override;
-    function Hash64(key: Pointer; KeySize: Cardinal): Int64; override;
+    function Hash32(key: Pointer; {%H-}KeySize: Cardinal): Cardinal; override;
+    function Hash16(key: Pointer; {%H-}KeySize: Cardinal): Word; override;
+    function Hash64(key: Pointer; {%H-}KeySize: Cardinal): Int64; override;
     procedure FreeKey(key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs32);
@@ -83,11 +83,11 @@ begin
     exit;
   end;
   case KeySize1 of
-    sizeof(Word) : Result := Word(key1) = Word(key2);
-    sizeof(Cardinal) : Result := Cardinal(key1) = Cardinal(key2);
+    sizeof(Word) : Result := {%H-}Word(key1) = {%H-}Word(key2);
+    sizeof(Cardinal) : Result := {%H-}Cardinal(key1) = {%H-}Cardinal(key2);
     sizeof(Int64) : if sizeof(Pointer) <> sizeof(Int64) then
       Result := PInt64(key1)^ = PInt64(key2)^
-    else Result := key1 = key2;
+    else {%H-}Result := key1 = key2;
     else RaiseTrieDepthError;
   end;
 end;
