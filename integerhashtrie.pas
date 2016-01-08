@@ -36,12 +36,15 @@ type
     procedure FreeKey(key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs32);
-    function Add(key : Cardinal; Value : Pointer): Boolean; overload;
-    function Add(key : Word; Value : Pointer): Boolean; overload;
-    function Add(key : Int64; Value : Pointer): Boolean; overload;
+    function Add(key: Cardinal; Value: Pointer = nil): Boolean; overload;
+    function Add(key: Word; Value: Pointer = nil): Boolean; overload;
+    function Add(key: Int64; Value: Pointer = nil): Boolean; overload;
     function Find(key : Cardinal; out Value : Pointer) : Boolean; overload;
     function Find(key : Word; out Value : Pointer) : Boolean; overload;
     function Find(key : Int64; out Value : Pointer) : Boolean; overload;
+    function Find(key : Cardinal): Boolean; overload;
+    function Find(key : Word): Boolean; overload;
+    function Find(key : Int64): Boolean; overload;
     function Remove(key : Cardinal) : Boolean; overload;
     function Remove(key : Word) : Boolean; overload;
     function Remove(key : Int64) : Boolean; overload;
@@ -103,17 +106,17 @@ begin
     Dispose(PInt64(key));
 end;
 
-function TIntegerHashTrie.Add(key : Cardinal; Value : Pointer): Boolean;
+function TIntegerHashTrie.Add(key: Cardinal; Value: Pointer = nil): Boolean;
 begin
   Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
 end;
 
-function TIntegerHashTrie.Add(key : Word; Value : Pointer): Boolean;
+function TIntegerHashTrie.Add(key: Word; Value: Pointer = nil): Boolean;
 begin
   Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
 end;
 
-function TIntegerHashTrie.Add(key : Int64; Value : Pointer): Boolean;
+function TIntegerHashTrie.Add(key: Int64; Value: Pointer = nil): Boolean;
 var
   keyInt64 : PInt64;
 begin
@@ -141,6 +144,27 @@ begin
   if sizeof(Pointer) <> sizeof(Int64) then
     Result := InternalFind(@key, sizeof(key), Value)
   else {%H-}Result := InternalFind({%H-}Pointer(key), sizeof(key), Value);
+end;
+
+function TIntegerHashTrie.Find(key : Cardinal): Boolean;
+var
+  Dummy : Pointer;
+begin
+  Result := Find(key, Dummy);
+end;
+
+function TIntegerHashTrie.Find(key : Int64): Boolean;
+var
+  Dummy : Pointer;
+begin
+  Result := Find(key, Dummy);
+end;
+
+function TIntegerHashTrie.Find(key : Word): Boolean;
+var
+  Dummy : Pointer;
+begin
+  Result := Find(key, Dummy);
 end;
 
 function TIntegerHashTrie.InternalAdd(key: Pointer; KeySize: Cardinal; Value:
