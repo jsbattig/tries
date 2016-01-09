@@ -34,3 +34,23 @@ operations.
 
 The class also provides a Pack method that be used to keep storage in check when lots
 of Removed have been issued.
+
+Tested TStringHashTrie against delphi's TDictionary<> and C# Dictionary<> classes.
+
+Using a load of 1 million strings, the three contenders performed within the same
+ballpark in terms of time to add, iterate and find the items.
+
+When adjusting Delphi reduced speed as compared to C# because of the cost of memory
+deallocation, TDictionary<> and Dicionary<> performed similary for a load of 10 million
+strings.
+TStringHashTrie performed took a little shy of double the time to proces 10 million
+strings.
+
+The difference was on memory allocation.
+For 10 million strings, compiling in 32 bits, TDictionary<> used about 1GB of RAM.
+C# Dictionary<> used about 750MB while TStringHashTrie used about 400MB.
+
+For raw speed TDictionary<> is definitively better than TStringHashTrie, but at a high
+memory cost.
+
+For Delphi 2007 I didn't bother testing against the only default option: sorted TStringList.
