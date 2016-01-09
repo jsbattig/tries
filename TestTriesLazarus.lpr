@@ -22,7 +22,7 @@
   SOFTWARE.
 *)
 
-program Test_PointerContainer;
+program TestTriesLazarus;
 
 {$mode objfpc}{$H+}
 

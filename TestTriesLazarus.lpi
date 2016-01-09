@@ -5,7 +5,7 @@
     <General>
       <SessionStorage Value="InProjectDir"/>
       <MainUnit Value="0"/>
-      <Title Value="Test_PointerContainer"/>
+      <Title Value="TestTriesLazarus"/>
       <ResourceType Value="res"/>
       <UseXPManifest Value="True"/>
       <Icon Value="0"/>
@@ -92,7 +92,7 @@
     </RequiredPackages>
     <Units Count="10">
       <Unit0>
-        <Filename Value="Test_PointerContainer.lpr"/>
+        <Filename Value="TestTriesLazarus.lpr"/>
         <IsPartOfProject Value="True"/>
       </Unit0>
       <Unit1>
