@@ -111,7 +111,6 @@ var
   Value : Pointer;
 begin
   FIntHashTrie := TIntegerHashTrie.Create(hs32);
-  FIntHashTrie.DuplicatesMode := dmReplaceExisting;
   FIntHashTrie.Add(Cardinal(1), Self);
   Check(FIntHashTrie.Find(Cardinal(1), Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');

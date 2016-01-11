@@ -24,7 +24,8 @@ uses
   pointertrie in 'pointertrie.pas',
   stringhashtrie in 'stringhashtrie.pas',
   trie in 'trie.pas',
-  usuperfasthash in 'usuperfasthash.pas';
+  usuperfasthash in 'usuperfasthash.pas',
+  xxhash in 'xxhash.pas';
 
 {$R *.RES}
 

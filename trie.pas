@@ -87,11 +87,6 @@ type
   TTrieLeafNodeArray = array[0..MaxInt - 1] of Byte;
   PTrieLeafNodeArray = ^TTrieLeafNodeArray;
 
-  TTrieStats = record
-    NodeCount : Integer;
-    TotalMemAllocated : Int64;
-  end;
-
   (*
     IMPORTANT NOTE ON Delphi 2007:
 
@@ -145,7 +140,6 @@ type
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
     procedure CleanLowBitsIteratorLastResult(var AIterator : TTrieIterator; ATrieDepth : Byte); inline;
   protected
-    FStats : TTrieStats;
     FCount : Integer;
     function InternalFind(const Data; out ANode: PTrieLeafNode; out AChildIndex:
         Byte; LeafHasChildIndex: Boolean): Boolean;
@@ -174,7 +168,6 @@ type
     procedure InitIterator(out AIterator : TTrieIterator);
     procedure Pack; virtual;
     property Count : Integer read FCount;
-    property Stats : TTrieStats read FStats;
   end;
 
 implementation
@@ -227,8 +220,6 @@ begin
   Result^.Base.ChildrenCount := 0;
   Result^.Children := nil;
   Result^.ChildIndex := 0;
-  inc(FStats.NodeCount);
-  inc(FStats.TotalMemAllocated, sizeof(TTrieBranchNode));
 end;
 
 procedure TTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);
@@ -238,12 +229,7 @@ begin
   else if Level = FLastMidBranchNode + 1 then
     FreeTrieLeafNodeArray(PTrieLeafNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1);
   if Level < FTrieDepth - 1 then
-  begin
     FreeMem(ANode);
-    dec(FStats.TotalMemAllocated, sizeof(TTrieBranchNode));
-  end
-  else dec(FStats.TotalMemAllocated, LeafSize);
-  dec(FStats.NodeCount);
 end;
 
 procedure TTrie.RaiseTrieDepthError;
@@ -258,22 +244,16 @@ end;
 
 function TTrie.AddChild(ANode: PTrieBranchNode; Level: Byte
   ): Integer;
-  procedure ReallocArray(var Arr : Pointer; NewCount, ObjSize : Cardinal);
-  begin
-    ReallocMem(Arr, NewCount * ObjSize);
-    inc(FStats.TotalMemAllocated, ObjSize);
-  end;
 begin
   if Level <= FLastMidBranchNode then
   begin
-    ReallocArray(ANode^.Children, ANode^.Base.ChildrenCount + 1, sizeof(Pointer));
+    ReallocMem(ANode^.Children, (ANode^.Base.ChildrenCount + 1) * sizeof(Pointer));
     PTrieNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount] := NewTrieBranchNode();
   end
   else
   begin
-    ReallocArray(ANode^.Children, ANode^.Base.ChildrenCount + 1, LeafSize);
+    ReallocMem(ANode^.Children, (ANode^.Base.ChildrenCount + 1) * LeafSize);
     InitLeaf(PTrieLeafNode(@PTrieLeafNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount * LeafSize])^);
-    inc(FStats.NodeCount);
   end;
   Result := ANode^.Base.ChildrenCount;
   inc(ANode^.Base.ChildrenCount);
@@ -381,8 +361,6 @@ end;
 procedure TTrie.Clear;
 begin
   FreeTrieNode(@FRoot^.Base, 0);
-  FStats.TotalMemAllocated := 0;
-  FStats.NodeCount := 0;
   FCount := 0;
   FRoot := NewTrieBranchNode();
 end;
@@ -513,7 +491,6 @@ begin
               PackingNode := True;
             end;
             dec(AIterator.NodeStack[AIterator.Level]^.ChildrenCount);
-            dec(FStats.TotalMemAllocated, sizeof(Pointer));
             SetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex, False);
             FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base, AIterator.Level + 1);
           end

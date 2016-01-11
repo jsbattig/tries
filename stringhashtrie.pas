@@ -36,7 +36,7 @@ type
   protected
     function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
         {%H-}KeySize2: Cardinal): Boolean; override;
-    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
+    function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; override;
     procedure FreeKey({%H-}key : Pointer); override;
   public
     constructor Create(AHashSize : THashSize = hs16);
@@ -51,6 +51,7 @@ type
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
     function Find(const key : String; out Value: Pointer): Boolean; overload;
+    function Find(const key: String): Boolean; overload;
     function Remove(const key: String): Boolean; overload;
     function Next(var AIterator: THashTrieIterator; out key: String; out Value: Pointer): Boolean; overload;
     procedure Traverse(UserData: Pointer; UserProc: TUTF16StrHashTraverseProc); overload;
@@ -62,7 +63,7 @@ type
 implementation
 
 uses
-  uSuperFastHash;
+  xxHash;
 
 { TStringHashTrie }
 
@@ -79,14 +80,21 @@ begin
   else Result := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrComp(PAnsiChar(key1), PAnsiChar(key2)) = 0;
 end;
 
-function TStringHashTrie.Hash32(key: Pointer; KeySize: Cardinal): Cardinal;
+function TStringHashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal):
+    Cardinal;
+var
+  Upper : AnsiString;
 begin
-  Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
+  if FCaseInsensitive then
+  begin
+    Upper := UpperCase(AnsiString(key));
+    Result := Cardinal(xxHash32Calc(PAnsiChar(Upper), KeySize, ASeed));
+  end
+  else Result := Cardinal(xxHash32Calc(key, KeySize, ASeed));
 end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
-  dec(FStats.TotalMemAllocated, Int64({$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(key))) + 1);
   {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
 end;
 
@@ -99,7 +107,6 @@ begin
   kvp.Value := Value;
   kvp.KeySize := length(Key);
   Result := inherited Add(kvp);
-  inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 
 {$IFDEF UNICODE}
@@ -122,7 +129,6 @@ begin
   kvp.Value := Value;
   kvp.KeySize := length(UTF8Str);
   Result := inherited Add(kvp);
-  inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 {$ENDIF}
 
@@ -155,6 +161,13 @@ begin
   if Result then
     Value := kvp^.Value
   else Value := nil;
+end;
+
+function TStringHashTrie.Find(const key: String): Boolean;
+var
+  Dummy : Pointer;
+begin
+  Result := Find(key, Dummy);
 end;
 {$ENDIF}
 
