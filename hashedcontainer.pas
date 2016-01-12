@@ -2,6 +2,9 @@ unit hashedcontainer;
 
 interface
 
+uses
+  SysUtils;
+
 type
   _Int64 = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
 
@@ -12,7 +15,6 @@ type
   end;
 
   PTrieBranchNode = ^TTrieBranchNode;
-  
   TTrieBranchNode = record
     Base : TTrieBaseNode;
     ChildIndex : Int64;
@@ -20,12 +22,14 @@ type
   end;
 
 const
+  NOT_BUSY                   = 0;
   BitsPerByte                = 8;
   BitsForChildIndexPerBucket = 4;   // Don't play with this knob, code designed to work on this specific value
   BucketMask                 = $F;  // Don't play with this knob, code designed to work on this specific value
   TrieDepth16Bits            = (sizeof(Word) * BitsPerByte) div BitsForChildIndexPerBucket;
   TrieDepth32Bits            = (sizeof(Integer) * BitsPerByte) div BitsForChildIndexPerBucket;
   TrieDepth64Bits            = (sizeof(Int64) * BitsPerByte) div BitsForChildIndexPerBucket;
+  TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
 
   ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
@@ -50,8 +54,19 @@ type
   PTrieLeafNodeArray = ^TTrieLeafNodeArray;
 
 type
+  EHashedContainer = class(Exception);
   TFreeTrieNodeEvent = procedure(ANode : PTrieBaseNode; Level : Byte) of object;
   TInitLeafEvent = procedure(var Leaf) of object;
+
+  THashedContainerIterator = packed record
+    AtEnd : Boolean; _Padding1 : array [1..3] of Byte;
+    case Integer of
+      TrieDepth16Bits       : (LastResult16 : Word;);
+      TrieDepth32Bits       : (LastResult32 : Integer;);
+      TrieDepth64Bits       : (LastResult64 : _Int64;);
+      -TrieDepthPointerSize : (LastResultPtr : Pointer;);
+  end;
+
   THashedContainer = class
   private
     FHashSize: Byte;
@@ -68,11 +83,13 @@ type
     procedure InitLeaf(var Leaf);
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     property LeafSize : Cardinal read FLeafSize;
+    property HashSize : Byte read FHashSize;
   public
     constructor Create(AHashSize: Byte; ALeafSize: Cardinal);
     procedure Clear; virtual; abstract;
     procedure Pack; virtual; abstract;
-    procedure InitIterator(out AIterator); virtual; abstract;
+    procedure InitIterator(out _AIterator); virtual;
+    function GetObjectFromIterator(const _AIterator): Pointer; virtual;
     function Next(var _AIterator; ADepth: Byte = 0): Boolean; virtual; abstract;
     function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; virtual; abstract;
     procedure Remove(const Data); virtual; abstract;
@@ -122,6 +139,19 @@ function THashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
     Byte): Byte;
 begin
   Result := (ANode^.ChildIndex shr (Int64(BitFieldIndex) * BitsForChildIndexPerBucket)) and BucketMask;
+end;
+
+function THashedContainer.GetObjectFromIterator(const _AIterator): Pointer;
+begin
+  Result := THashedContainerIterator(_AIterator).LastResultPtr;
+end;
+
+procedure THashedContainer.InitIterator(out _AIterator);
+var
+  AIterator : THashedContainerIterator absolute _AIterator;
+begin
+  AIterator.AtEnd := False;
+  AIterator.LastResult64 := 0;
 end;
 
 procedure THashedContainer.InitLeaf(var Leaf);

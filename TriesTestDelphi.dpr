@@ -26,7 +26,8 @@ uses
   trie in 'trie.pas',
   xxhash in 'xxhash.pas',
   uAllocators in 'uAllocators.pas',
-  hashedcontainer in 'hashedcontainer.pas';
+  hashedcontainer in 'hashedcontainer.pas',
+  hash_table in 'hash_table.pas';
 
 {$R *.RES}
 

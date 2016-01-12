@@ -50,7 +50,7 @@ type
     procedure TestAddAndFindManyEntriesUsingTDictionary;
     procedure TestAddIterateAndFindManyEntriesTDictionary;
     {$ENDIF}
-    procedure TestRemoveAndPack;
+    procedure TestRemoveAndPackHash32;
     procedure TestIterator;
     procedure TestAutoFreeValue;
     procedure TestAddTwoValuesAndIterate;
@@ -58,6 +58,7 @@ type
     procedure TestUnicodeChars;
     procedure TestAddAndTraverseUnicode;
     procedure TestAddFindAndRemoveManyEntriesUsingTDictionary;
+    procedure TestRemoveAndPack;
     {$ENDIF}
   end;
 
@@ -160,7 +161,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestRemoveAndPack;
+procedure TStringHashTrieTest.TestRemoveAndPackHash32;
 var
   Value : Pointer;
 begin
@@ -425,6 +426,20 @@ begin
   finally
     FDict.Free;
   end;
+end;
+
+procedure TStringHashTrieTest.TestRemoveAndPack;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.Add('Hello World', Self);
+  FStrHashTrie.Add('Hello World 2', Self);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Pack;
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Remove('Hello World');
+  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  FStrHashTrie.Pack;
 end;
 
 procedure TStringHashTrieTest.TraverseMethUnicode({%H-}UserData: Pointer; Key:

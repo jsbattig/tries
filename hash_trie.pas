@@ -7,7 +7,7 @@ unit Hash_Trie;
 interface
 
 uses
-  Trie, uAllocators, HashedContainer;
+  Trie, hash_table, uAllocators, HashedContainer;
 
 type
   THashSize = (hs16, hs32, hs64);
@@ -44,8 +44,11 @@ type
   PHashTrieNodeArray = ^THashTrieNodeArray;
 
   THashTrieIterator = record
-    Base : TTrieIterator;
     BackTrack : PKeyValuePairBacktrackNode;
+    case Integer of
+      0 : (Base : THashedContainerIterator);
+      1 : (BaseTrieIterator : TTrieIterator);
+      2 : (BaseHashTableIterator : THashTableIterator);
   end;
 
   THashRecord = record
@@ -102,6 +105,7 @@ type
     procedure Clear; override;
     procedure InitIterator(out AIterator : THashTrieIterator); reintroduce;
     procedure DoneIterator(var AIterator : THashTrieIterator);
+    function GetObjectFromIterator(const _AIterator): Pointer; override;
     procedure Pack; override;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
@@ -125,12 +129,14 @@ const
 begin
   FTrieDepth := HashSizeToTrieDepth[AHashSize];
   inherited Create(THashSizeToHashSize[AHashSize], sizeof(THashTrieNode));
-  FContainer := TTrie.Create(HashSizeToTrieDepth[AHashSize], sizeof(THashTrieNode));
+  if AHashSize = hs16 then
+    FContainer := THashTable.Create(THashSizeToHashSize[AHashSize], sizeof(THashTrieNode))
+  else FContainer := TTrie.Create(HashSizeToTrieDepth[AHashSize], sizeof(THashTrieNode));
   FContainer.OnFreeTrieNode := FreeTrieNode;
   FContainer.OnInitLeaf := InitLeaf;
   FHashSize := AHashSize;
-  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), 2048 div sizeof(TKeyValuePairNode));
-  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), 2048 div sizeof(TKeyValuePairBacktrackNode));
+  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TKeyValuePairNode));
+  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TKeyValuePairBacktrackNode));
 end;
 
 destructor THashTrie.Destroy;
@@ -310,6 +316,13 @@ begin
   AIterator.BackTrack := nil;
 end;
 
+function THashTrie.GetObjectFromIterator(const _AIterator): Pointer;
+var
+  AIterator : THashTrieIterator absolute _AIterator;
+begin
+  Result := AIterator.Base.LastResultPtr;
+end;
+
 function THashTrie.InternalFind(key: Pointer; KeySize: Cardinal; out
     HashTrieNode: PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
 var
@@ -471,16 +484,14 @@ procedure THashTrie.Pack;
 label
   ContinueOuterLoopIteration;
 var
-  It : TTrieIterator;
+  It : THashTrieIterator;
   i, AChildIndex : byte;
-  ATrieDepth : Byte;
   Node : PHashTrieNode;
 begin
-  ATrieDepth := TrieDepth;
-  FContainer.InitIterator(It);
-  while FContainer.Next(It) do
+  FContainer.InitIterator(It.Base);
+  while FContainer.Next(It.Base) do
   begin
-    Node := PHashTrieNode(It.NodeStack[ATrieDepth - 1]);
+    Node := FContainer.GetObjectFromIterator(It.Base);
     for i := 0 to ChildrenPerBucket - 1 do
     begin
       if GetBusyIndicator(@Node^.Base, i) then
@@ -490,7 +501,7 @@ begin
            goto ContinueOuterLoopIteration;
       end;
     end;
-    Node^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by FContainer.Pack()
+    Node^.Base.Busy := NOT_BUSY; // We mark the record as not busy anymore, will be collected by FContainer.Pack()
 ContinueOuterLoopIteration:
   end;
   FContainer.Pack;
@@ -512,7 +523,7 @@ begin
   while FContainer.Next(AIterator.Base) do
   begin
     ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
-    Node := PTrieBranchNode(AIterator.Base.NodeStack[TrieDepth - 1]);
+    Node := FContainer.GetObjectFromIterator(AIterator.Base);
     AChildIndex := GetChildIndex(Node, ABitFieldIndex);
     KVPNode := PHashTrieNodeArray(Node^.Children)^[AChildIndex];
     if KVPNode = nil then
