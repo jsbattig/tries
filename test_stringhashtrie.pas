@@ -277,7 +277,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntries;
 const
-  Count = 1024 * 1024 * 10;
+  Count = 1024 * 1024 * 1;
 var
   List : TStringList;
   i : integer;
@@ -397,7 +397,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntriesUsingTDictionary;
 const
-  Count = 1024 * 1024 * 10;
+  Count = 1024 * 1024 * 1;
 var
   List : TStringList;
   i : integer;

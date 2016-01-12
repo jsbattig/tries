@@ -53,7 +53,6 @@ type
   published
     procedure TestCreateSuccess;
     procedure TestAddPointerSuccess;
-    procedure TestAddDuplicatePointerFailure;
     procedure TestAddPointerAndFindSuccess;
     procedure TestAddPointerAndFindNonExistingPointerFailure;
     procedure TestAddALotOfPointersAndFindThemSuccess;
@@ -90,18 +89,6 @@ end;
 procedure TTestPointerTrie.TestCreateSuccess;
 begin
   Check(FPointerTrie <> nil, 'FPointerTrie must be <> nil');
-end;
-
-procedure TTestPointerTrie.TestAddDuplicatePointerFailure;
-begin
-  FPointerTrie.AllowDuplicates := False;
-  FPointerTrie.Add(Self);
-  try
-    FPointerTrie.Add(Self);
-    Fail('Expected exception EPointerTrieDuplicate');
-  except
-    on E : ETrieDuplicate do {};
-  end;
 end;
 
 procedure TTestPointerTrie.TestAddPointerSuccess;
@@ -146,7 +133,6 @@ end;
 
 procedure TTestPointerTrie.TestAddDuplicatePointerAfterRemovalSuccess;
 begin
-  FPointerTrie.AllowDuplicates := False;
   FPointerTrie.Add(Self);
   FPointerTrie.Add(FPointerTrie);
   CheckEquals(2, FPointerTrie.Count, 'Count doesn''t match');

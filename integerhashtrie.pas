@@ -7,7 +7,7 @@ unit IntegerHashTrie;
 interface
 
 uses
-  Trie, Hash_Trie;
+  SysUtils, Trie, Hash_Trie;
 
 type
   TIntHashTraverseProc = procedure(UserData: Pointer; Value: integer;
@@ -72,9 +72,6 @@ end;
 function TIntegerHashTrie.CompareKeys(key1: Pointer; KeySize1: Cardinal; key2:
     Pointer; KeySize2: Cardinal): Boolean;
 begin
-  {$IFNDEF FPC}
-  Result := False;
-  {$ENDIF}
   if KeySize1 <> KeySize2 then
   begin
     Result := False;
@@ -86,7 +83,7 @@ begin
     sizeof(Int64) : if sizeof(Pointer) <> sizeof(Int64) then
       Result := PInt64(key1)^ = PInt64(key2)^
     else {%H-}Result := key1 = key2;
-    else RaiseTrieDepthError;
+    else RaiseHashSizeError;
   end;
 end;
 

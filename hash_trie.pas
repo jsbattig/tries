@@ -7,7 +7,7 @@ unit Hash_Trie;
 interface
 
 uses
-  Trie;
+  Trie, uAllocators, HashedContainer;
 
 type
   THashSize = (hs16, hs32, hs64);
@@ -60,11 +60,15 @@ type
 
   { THashTrie }
 
-  THashTrie = class(TTrie)
+  THashTrie = class(THashedContainer)
   private
+    FContainer : THashedContainer;
     FHashSize : THashSize;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
+    FKeyValuePairNodeAllocator : TFixedBlockHeap;
+    FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
+    FTrieDepth: Byte;
     function AddOrReplaceNode(var Root: PKeyValuePairNode; const kvp:
         TKeyValuePair): Boolean;
     procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
@@ -73,27 +77,30 @@ type
     procedure NextLeafTreeNode(var AIterator: THashTrieIterator; AFreeNodes:
         Boolean = False);
   protected
-    function LeafSize : Cardinal; override;
-    procedure InitLeaf(var Leaf); override;
+    procedure InitLeaf(var Leaf);
     procedure FreeKey({%H-}key : Pointer); virtual;
     procedure FreeValue({%H-}value : Pointer); virtual;
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; virtual; abstract;
-    procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); override;
+    procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize, ASeed:
         Cardinal); virtual;
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
     function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize, ASeed: Cardinal): Int64; virtual;
-    function Add(var kvp: TKeyValuePair): Boolean;
+    function Add(var kvp: TKeyValuePair): Boolean; reintroduce;
     function InternalFind(key: Pointer; KeySize: Cardinal; out HashTrieNode:
-        PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
-    function Remove(key: Pointer; KeySize: Cardinal): Boolean;
-    function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
+                          PHashTrieNode; out AChildIndex: Byte): PKeyValuePair; reintroduce;
+    function Remove(key: Pointer; KeySize: Cardinal): Boolean; reintroduce;
+    function Next(var AIterator : THashTrieIterator) : PKeyValuePair; reintroduce;
+    procedure RaiseHashSizeError; inline;
     property HashSize : THashSize read FHashSize;
+    property TrieDepth: Byte read FTrieDepth;
   public
     constructor Create(AHashSize : THashSize);
-    procedure InitIterator(out AIterator : THashTrieIterator);
+    destructor Destroy; override;
+    procedure Clear; override;
+    procedure InitIterator(out AIterator : THashTrieIterator); reintroduce;
     procedure DoneIterator(var AIterator : THashTrieIterator);
     procedure Pack; override;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
@@ -114,10 +121,24 @@ const
 constructor THashTrie.Create(AHashSize: THashSize);
 const
   HashSizeToTrieDepth : array[hs16..hs64] of Byte = (4, 8, 16);
+  THashSizeToHashSize : array[hs16..hs64] of Byte = (sizeof(Word), sizeof(Cardinal), sizeof(Int64));
 begin
-  inherited Create(HashSizeToTrieDepth[AHashSize]);
-  inherited AllowDuplicates := True;
+  FTrieDepth := HashSizeToTrieDepth[AHashSize];
+  inherited Create(THashSizeToHashSize[AHashSize], sizeof(THashTrieNode));
+  FContainer := TTrie.Create(HashSizeToTrieDepth[AHashSize], sizeof(THashTrieNode));
+  FContainer.OnFreeTrieNode := FreeTrieNode;
+  FContainer.OnInitLeaf := InitLeaf;
   FHashSize := AHashSize;
+  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), 2048 div sizeof(TKeyValuePairNode));
+  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), 2048 div sizeof(TKeyValuePairBacktrackNode));
+end;
+
+destructor THashTrie.Destroy;
+begin
+  inherited;
+  FContainer.Free;
+  FKeyValuePairBacktrackNodeAllocator.Free;
+  FKeyValuePairNodeAllocator.Free;
 end;
 
 function THashTrie.Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word;
@@ -151,18 +172,12 @@ begin
     hs16 : Hash.Hash16 := Hash16(key, KeySize, ASeed);
     hs32 : Hash.Hash32 := Hash32(key, KeySize, ASeed);
     hs64 : Hash.Hash64 := Hash64(key, KeySize, ASeed);
-    else RaiseTrieDepthError;
+    else RaiseHashSizeError;
   end;
-end;
-
-function THashTrie.LeafSize: Cardinal;
-begin
-  Result := sizeof(THashTrieNode);
 end;
 
 procedure THashTrie.InitLeaf(var Leaf);
 begin
-  inherited InitLeaf(Leaf);
   THashTrieNode(Leaf).Children := nil;
   THashTrieNode(Leaf).ChildIndex := 0;
 end;
@@ -201,7 +216,6 @@ begin
     if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
       FreeMem(PHashTrieNode(ANode)^.Children);
   end;
-  inherited FreeTrieNode(ANode, Level);
 end;
 
 function THashTrie.Add(var kvp: TKeyValuePair): Boolean;
@@ -214,7 +228,7 @@ begin
   CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED);
   CalcHash(TreeHash, kvp.Key, kvp.KeySize, TREE_HASH_SEED);
   kvp.Hash := TreeHash.Hash16;
-  inherited Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
+  FContainer.Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
   if not WasNodeBusy then
   begin
     ChildIndex := Node^.Base.ChildrenCount;
@@ -225,7 +239,7 @@ begin
   end
   else ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
   Result := AddOrReplaceNode(PHashTrieNodeArray(Node^.Children)^[ChildIndex], kvp);
-  if Result and WasNodeBusy then
+  if Result then
     inc(FCount);
 end;
 
@@ -277,6 +291,11 @@ begin
   Result := True;
 end;
 
+procedure THashTrie.Clear;
+begin
+  FContainer.Clear;
+end;
+
 procedure THashTrie.DoneIterator(var AIterator : THashTrieIterator);
 var
   Node, TmpNode : PKeyValuePairBacktrackNode;
@@ -286,7 +305,7 @@ begin
   begin
     TmpNode := Node;
     Node := Node^.Next;
-    FreeMem(TmpNode);
+    uAllocators.DeAlloc(TmpNode);
   end;
   AIterator.BackTrack := nil;
 end;
@@ -298,7 +317,7 @@ var
   Node : PKeyValuePairNode;
 begin
   CalcHash(Hash, key, KeySize, TRIE_HASH_SEED);
-  if inherited InternalFind(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
+  if FContainer.Find(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
   begin
     CalcHash(Hash, key, KeySize, TREE_HASH_SEED);
     Node := PHashTrieNodeArray(PHashTrieNode(HashTrieNode)^.Children)^[AChildIndex];
@@ -387,16 +406,16 @@ begin
             SmallestNodeParent^.Left := SmallestNode^.Right;
             Node^.KVP := SmallestNode^.KVP;
             Node^.Next := SmallestNode^.Next;
-            FreeMem(SmallestNode);
+            uAllocators.DeAlloc(SmallestNode);
           end
           else
           begin
             ParentNodePtr^ := Node^.Right;
             Node^.Right^.Left := Node^.Left;
-            FreeMem(Node);
+            uAllocators.DeAlloc(Node);
           end;
         end
-        else FreeMem(Node);
+        else uAllocators.DeAlloc(Node);
         Result := True;
         dec(FCount);
         exit;
@@ -421,7 +440,7 @@ end;
 
 procedure THashTrie.InitIterator(out AIterator: THashTrieIterator);
 begin
-  inherited InitIterator(AIterator.Base);
+  FContainer.InitIterator(AIterator.Base);
   AIterator.BackTrack := nil;
 end;
 
@@ -430,7 +449,7 @@ procedure THashTrie.NewBacktrackNode(var AIterator: THashTrieIterator; Node:
 var
   BacktrackNode : PKeyValuePairBacktrackNode;
 begin
-  GetMem(BacktrackNode, sizeof(TKeyValuePairBacktrackNode));
+  BacktrackNode := FKeyValuePairBacktrackNodeAllocator.Alloc;
   BacktrackNode^.Node := Node;
   BacktrackNode^.Next := AIterator.BackTrack;
   if AIterator.Backtrack <> nil then
@@ -441,7 +460,7 @@ end;
 
 function THashTrie.NewKVPNode(const kvp: TKeyValuePair): PKeyValuePairNode;
 begin
-  GetMem(Result, sizeof(TKeyValuePairNode));
+  Result := FKeyValuePairNodeAllocator.Alloc;
   Result^.KVP := kvp;
   Result^.Left := nil;
   Result^.Right := nil;
@@ -458,8 +477,8 @@ var
   Node : PHashTrieNode;
 begin
   ATrieDepth := TrieDepth;
-  inherited InitIterator(It);
-  while inherited Next(It) do
+  FContainer.InitIterator(It);
+  while FContainer.Next(It) do
   begin
     Node := PHashTrieNode(It.NodeStack[ATrieDepth - 1]);
     for i := 0 to ChildrenPerBucket - 1 do
@@ -471,10 +490,10 @@ begin
            goto ContinueOuterLoopIteration;
       end;
     end;
-    Node^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by inherited Pack()
+    Node^.Base.Busy := 0; // We mark the record as not busy anymore, will be collected by FContainer.Pack()
 ContinueOuterLoopIteration:
   end;
-  inherited Pack;
+  FContainer.Pack;
 end;
 
 function THashTrie.Next(var AIterator: THashTrieIterator): PKeyValuePair;
@@ -490,7 +509,7 @@ begin
     NextLeafTreeNode(AIterator);
     exit;
   end;
-  while inherited Next(AIterator.Base) do
+  while FContainer.Next(AIterator.Base) do
   begin
     ABitFieldIndex := GetBitFieldIndex(AIterator.Base.LastResult64, TrieDepth - 1);
     Node := PTrieBranchNode(AIterator.Base.NodeStack[TrieDepth - 1]);
@@ -516,11 +535,11 @@ var
     begin
       FreeKey(AIterator.BackTrack^.Node^.KVP.Key);
       FreeValue(AIterator.BackTrack^.Node^.KVP.Value);
-      FreeMem(AIterator.BackTrack^.Node);
+      uAllocators.DeAlloc(AIterator.BackTrack^.Node);
     end;
     BacktrackNode := AIterator.BackTrack;
     AIterator.BackTrack := BacktrackNode^.Next;
-    FreeMem(BacktrackNode);
+    uAllocators.Dealloc(BacktrackNode);
   end;
 begin
   while AIterator.BackTrack <> nil do
@@ -555,6 +574,13 @@ begin
         imUp : MoveUp;
       end;
     end;
+end;
+
+procedure THashTrie.RaiseHashSizeError;
+const
+  STR_HASHSIZEERROR = 'Wrong hash size';
+begin
+  raise ETrie.Create(STR_HASHSIZEERROR);
 end;
 
 end.

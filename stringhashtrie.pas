@@ -9,7 +9,8 @@ interface
 uses
   SysUtils,
   Trie,
-  Hash_Trie
+  Hash_Trie,
+  uAllocators
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -29,6 +30,7 @@ type
   TStringHashTrie = class(THashTrie)
   private
     FCaseInsensitive: Boolean;
+    FPAnsiCharAllocator : TVariableBlockHeap;
     procedure InitTraversal(out It : THashTrieIterator; out ADone : Boolean); inline;
     {$IFDEF UNICODE}
     procedure CheckCaseInsensitiveWithUTF16; inline;
@@ -46,6 +48,7 @@ type
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
         Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
+    destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
     {$IFDEF UNICODE}
@@ -70,6 +73,13 @@ uses
 constructor TStringHashTrie.Create(AHashSize: THashSize);
 begin
   inherited Create(AHashSize);
+  FPAnsiCharAllocator := TVariableBlockHeap.Create(2048);
+end;
+
+destructor TStringHashTrie.Destroy;
+begin
+  inherited;
+  FPAnsiCharAllocator.Free;
 end;
 
 function TStringHashTrie.CompareKeys(key1: Pointer; KeySize1: Cardinal; key2:
@@ -87,7 +97,7 @@ var
 begin
   if FCaseInsensitive then
   begin
-    Upper := UpperCase(AnsiString(key));
+    Upper := UpperCase(AnsiString(PAnsiChar(key)));
     Result := Cardinal(xxHash32Calc(PAnsiChar(Upper), KeySize, ASeed));
   end
   else Result := Cardinal(xxHash32Calc(key, KeySize, ASeed));
@@ -95,7 +105,8 @@ end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
-  {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
+  //{$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
+  uAllocators.DeAlloc(key);
 end;
 
 function TStringHashTrie.Add(const key: AnsiString; Value: Pointer = nil):
@@ -103,9 +114,11 @@ function TStringHashTrie.Add(const key: AnsiString; Value: Pointer = nil):
 var
   kvp : TKeyValuePair;
 begin
-  kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
-  kvp.Value := Value;
   kvp.KeySize := length(Key);
+  kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
+  move(PAnsiChar(key)^, kvp.Key^, kvp.KeySize + 1);
+  //kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
+  kvp.Value := Value;
   Result := inherited Add(kvp);
 end;
 
@@ -125,9 +138,11 @@ var
 begin
   CheckCaseInsensitiveWithUTF16;
   UTF8Str := UTF8String(key);
-  kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8Str));
-  kvp.Value := Value;
+  //kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8Str));
   kvp.KeySize := length(UTF8Str);
+  kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
+  move(PAnsiChar(UTF8Str)^, kvp.Key^, kvp.KeySize + 1);
+  kvp.Value := Value;
   Result := inherited Add(kvp);
 end;
 {$ENDIF}

@@ -1,6 +1,11 @@
 ﻿{****************************************************
- This file is FreePascal port of xxHash
+  This file is FreePascal & Delphi port of xxHash
+  from origignal port by Vojtěch Čihák which was
+  FPC compatible only.
 
+  by Jose Sebastian Battig
+
+  Original copyright:
   Copyright (C) 2014 Vojtěch Čihák, Czech Republic
 
   http://sourceforge.net/projects/xxhashfpc/files/
@@ -21,14 +26,10 @@ interface
 {$IFNDEF FPC}
 type
   PQWord = ^QWord;
-  {$IFNDEF VER180}
   QWord = UInt64;
-  {$ELSE}
-  QWord = Int64;
-  {$ENDIF}
 {$IFDEF VER180}
-  NativeInt = Int64;
-  NativeUInt = UInt64;
+  NativeInt = Integer;
+  NativeUInt = Cardinal;
 {$ENDIF}
 {$ENDIF}
 
@@ -91,6 +92,7 @@ type
 
 implementation
 
+{$IFNDEF FPC}
 {$IFOPT Q+}{$DEFINE OVERFLOWCHECKSON}{$ENDIF}
 {$Q-}
 function RoLWord(Value: Word; N: Integer): Word; inline;
@@ -123,6 +125,7 @@ begin
   Result:= (Value shr N) or (Value shl (64-N));
 end;
 {$IFDEF OVERFLOWCHECKSON}{$Q+}{$ENDIF}
+{$ENDIF}
 
 function xxHash32Calc(ABuffer: Pointer; ALength: LongInt; ASeed: LongWord = 0): LongWord;
 var v1, v2, v3, v4: LongWord;
