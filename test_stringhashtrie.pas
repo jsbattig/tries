@@ -58,6 +58,7 @@ type
     procedure TestUnicodeChars;
     procedure TestAddAndTraverseUnicode;
     procedure TestAddFindAndRemoveManyEntriesUsingTDictionary;
+    procedure TestAddIterateAndFindManyEntriesHash32;
     procedure TestRemoveAndPack;
     {$ENDIF}
   end;
@@ -426,6 +427,30 @@ begin
   finally
     FDict.Free;
   end;
+end;
+
+procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesHash32;
+const
+  Count = 24011;
+var
+  i, Cnt : integer;
+  AIterator : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Free;
+  FStrHashTrie := TStringHashTrie.Create(hs32);
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+  Check(FStrHashTrie.Find('0hello'), 'Should find first element');
+  FStrHashTrie.InitIterator(AIterator);
+  Cnt := 0;
+  while FStrHashTrie.Next(AIterator, AKey, AValue) do
+  begin
+    Check(FStrHashTrie.Find(AKey, AValue), 'Item not found');
+    inc(Cnt);
+  end;
+  CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
 procedure TStringHashTrieTest.TestRemoveAndPack;
