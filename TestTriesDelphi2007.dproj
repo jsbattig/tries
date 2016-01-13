@@ -48,6 +48,7 @@
       <MainSource>MainSource</MainSource>
     </DelphiCompile>
     <DCCReference Include="hashedcontainer.pas" />
+    <DCCReference Include="hash_table.pas" />
     <DCCReference Include="hash_trie.pas" />
     <DCCReference Include="integerhashtrie.pas" />
     <DCCReference Include="pointertrie.pas" />

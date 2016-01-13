@@ -43,8 +43,8 @@ type
   public
     constructor Create(AHashSize : THashSize = hs16);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
-    function Find(const key: AnsiString; out Value: Pointer): Boolean; overload;
-    function Find(const key: AnsiString): Boolean; overload;
+    function Find(const key: AnsiString; out Value: Pointer): Boolean; reintroduce; overload;
+    function Find(const key: AnsiString): Boolean; reintroduce; overload;
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
         Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
@@ -53,8 +53,8 @@ type
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
-    function Find(const key : String; out Value: Pointer): Boolean; overload;
-    function Find(const key: String): Boolean; overload;
+    function Find(const key : String; out Value: Pointer): Boolean; reintroduce; overload;
+    function Find(const key: String): Boolean; reintroduce; overload;
     function Remove(const key: String): Boolean; overload;
     function Next(var AIterator: THashTrieIterator; out key: String; out Value: Pointer): Boolean; overload;
     procedure Traverse(UserData: Pointer; UserProc: TUTF16StrHashTraverseProc); overload;

@@ -12,6 +12,8 @@ type
   THashTableIterator = record
     Base : THashedContainerIterator;
     Index : Word;
+    BitFieldIndex : SmallInt;
+    Node : PTrieLeafNode;
   end;
 
   THashTable = class(THashedContainer)
@@ -29,6 +31,7 @@ type
     procedure Clear; override;
     function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte;
                   LeafHasChildIndex: Boolean): Boolean; overload; override;
+    function GetObjectFromIterator(const _AIterator): Pointer; override;
     procedure InitIterator(out _AIterator); override;
     function Next(var _AIterator; ADepth: Byte = 0): Boolean; override;
     procedure Pack; override;
@@ -63,21 +66,21 @@ end;
 
 function THashTable.Add(const Data; out Node : PTrieLeafNode; out WasBusy :
     Boolean): Boolean;
+var
+  ABitFieldIndex : Byte;
 begin
-  WasBusy := FHashTable[Word(Data)] <> nil;
-  if not WasBusy then
+  Result := FHashTable[Word(Data) div ChildrenPerBucket] = nil;
+  if Result then
   begin
     Node := FLeafNodesAllocator.Alloc;
     InitLeaf(Node^);
-    Node^.Base.Busy := Word(not NOT_BUSY);
-    FHashTable[Word(Data)] := Node;
-    Result := True;
+    FHashTable[Word(Data) div ChildrenPerBucket] := Node;
   end
-  else
-  begin
-    Node := FHashTable[Word(Data)];
-    Result := False;
-  end;
+  else Node := FHashTable[Word(Data) div ChildrenPerBucket];
+  ABitFieldIndex := GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1);
+  WasBusy := GetBusyIndicator(@Node^.Base, ABitFieldIndex);
+  if not WasBusy then
+    SetBusyIndicator(@Node^.Base, ABitFieldIndex, True);
 end;
 
 procedure THashTable.Clear;
@@ -94,14 +97,22 @@ end;
 
 function THashTable.Find(const Data; out ANode: PTrieLeafNode; out AChildIndex:
     Byte; LeafHasChildIndex: Boolean): Boolean;
+var
+  ABitFieldIndex : Byte;
 begin
-  Result := FHashTable[Word(Data)] <> nil;
+  ABitFieldIndex := GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1);
+  Result := (FHashTable[Word(Data) div ChildrenPerBucket] <> nil) and
+             GetBusyIndicator(@FHashTable[Word(Data) div ChildrenPerBucket]^.Base, ABitFieldIndex);
   if Result then
   begin
-    ANode := FHashTable[Word(Data)];
-    AChildIndex := 0;
+    ANode := FHashTable[Word(Data) div ChildrenPerBucket];
+    AChildIndex := GetChildIndex(@ANode^.Base, ABitFieldIndex);
   end
-  else ANode := nil;
+  else
+  begin
+    ANode := nil;
+    AChildIndex := 0;
+  end;
 end;
 
 procedure THashTable.FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
@@ -110,29 +121,57 @@ begin
   uAllocators.DeAlloc(ANode);
 end;
 
+function THashTable.GetObjectFromIterator(const _AIterator): Pointer;
+begin
+  Result := THashTableIterator(_AIterator).Node;
+end;
+
 procedure THashTable.InitIterator(out _AIterator);
 var
   AIterator : THashTableIterator absolute _AIterator;
 begin
   inherited InitIterator(AIterator.Base);
   AIterator.Index := 0;
+  AIterator.BitFieldIndex := -1;
+  AIterator.Node := nil;
 end;
 
 function THashTable.Next(var _AIterator; ADepth: Byte = 0): Boolean;
 var
   AIterator : THashTableIterator absolute _AIterator;
 begin
-  AIterator.Base.LastResultPtr := nil;
+  AIterator.Node := nil;
   repeat
-    if not AIterator.Base.AtEnd then
+    if AIterator.Base.AtEnd then
+      break;
+    AIterator.Node := FHashTable[AIterator.Index];
+    if AIterator.Node <> nil then
     begin
-      AIterator.Base.LastResultPtr := FHashTable[AIterator.Index];
-      AIterator.Base.AtEnd := AIterator.Index = MAX_HASH_TABLE_INDEX;
-      inc(AIterator.Index);
-    end
-    else break;
-  until AIterator.Base.AtEnd or (AIterator.Base.LastResultPtr <> nil);
-  Result := AIterator.Base.LastResultPtr <> nil;
+      inc(AIterator.BitFieldIndex);
+      while AIterator.BitFieldIndex < ChildrenPerBucket do
+      begin
+        if GetBusyIndicator(@PTrieLeafNode(AIterator.Node)^.Base, AIterator.BitFieldIndex) then
+          break;
+        inc(AIterator.BitFieldIndex);
+      end;
+    end;
+    if (AIterator.Node = nil) or (AIterator.BitFieldIndex >= ChildrenPerBucket) then
+    begin
+      if AIterator.Index = MAX_HASH_TABLE_INDEX then
+      begin
+        AIterator.Base.AtEnd := True;
+        break;
+      end
+      else
+      begin
+        inc(AIterator.Index);
+        AIterator.BitFieldIndex := -1;
+        AIterator.Node := nil;
+      end;
+    end;
+  until AIterator.Base.AtEnd or (AIterator.Node <> nil);
+  AIterator.Base.LastResult64 := (AIterator.Index * ChildrenPerBucket) + AIterator.BitFieldIndex;
+  Result := AIterator.Node <> nil;
 end;
 
 procedure THashTable.Pack;

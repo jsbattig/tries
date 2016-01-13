@@ -29,7 +29,8 @@ uses
   test_pointertrie in 'test_pointertrie.pas',
   test_old_stringhashtrie in 'test_old_stringhashtrie.pas',
   uAllocators in 'uAllocators.pas',
-  hashedcontainer in 'hashedcontainer.pas';
+  hashedcontainer in 'hashedcontainer.pas',
+  hash_table in 'hash_table.pas';
 
 {$R *.RES}
 

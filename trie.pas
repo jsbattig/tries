@@ -117,9 +117,8 @@ type
     procedure Clear; override;
     function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; override;
     procedure Remove(const Data); override;
-    function Find(const Data) : Boolean; overload;
     function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte;
-                  LeafHasChildIndex: Boolean): Boolean; overload; override;
+                  LeafHasChildIndex: Boolean): Boolean; override;
     function GetObjectFromIterator(const _AIterator): Pointer; override;
     procedure InitIterator(out _AIterator); override;
     function Next(var _AIterator; ADepth: Byte = 0): Boolean; override;
@@ -304,14 +303,6 @@ begin
   end;
   if not WasBusy then
     inc(FCount);
-end;
-
-function TTrie.Find(const Data): Boolean;
-var
-  DummyChildIndex : Byte;
-  DummyNode : PTrieLeafNode;
-begin
-  Result := Find(Data, DummyNode, DummyChildIndex, False);
 end;
 
 procedure TTrie.Remove(const Data);

@@ -76,7 +76,7 @@ end;
 
 function TPointerTrie.Find(p: Pointer): Boolean;
 begin
-  Result := inherited Find(p);
+  Result := inherited _Find(p);
 end;
 
 procedure TPointerTrie.Remove(p: Pointer);

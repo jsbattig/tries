@@ -89,12 +89,12 @@ type
     procedure Clear; virtual; abstract;
     procedure Pack; virtual; abstract;
     procedure InitIterator(out _AIterator); virtual;
-    function GetObjectFromIterator(const _AIterator): Pointer; virtual;
     function Next(var _AIterator; ADepth: Byte = 0): Boolean; virtual; abstract;
     function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; virtual; abstract;
     procedure Remove(const Data); virtual; abstract;
-    function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex:
-                  Byte; LeafHasChildIndex: Boolean): Boolean; overload; virtual; abstract;
+    function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte; LeafHasChildIndex: Boolean): Boolean; virtual; abstract;
+    function GetObjectFromIterator(const _AIterator): Pointer; virtual; abstract;
+    function _Find(const Data): Boolean; overload;
     property Count: Integer read FCount;
     property OnFreeTrieNode : TFreeTrieNodeEvent read FOnFreeTrieNode write FOnFreeTrieNode;
     property OnInitLeaf : TInitLeafEvent read FOnInitLeaf write FOnInitLeaf;
@@ -109,6 +109,14 @@ begin
   inherited Create;
   FHashSize := AHashSize;
   FLeafSize := ALeafSize;
+end;
+
+function THashedContainer._Find(const Data): Boolean;
+var
+  DummyChildIndex : Byte;
+  DummyNode : PTrieLeafNode;
+begin
+  Result := Find(Data, DummyNode, DummyChildIndex, False);
 end;
 
 procedure THashedContainer.FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
@@ -139,11 +147,6 @@ function THashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
     Byte): Byte;
 begin
   Result := (ANode^.ChildIndex shr (Int64(BitFieldIndex) * BitsForChildIndexPerBucket)) and BucketMask;
-end;
-
-function THashedContainer.GetObjectFromIterator(const _AIterator): Pointer;
-begin
-  Result := THashedContainerIterator(_AIterator).LastResultPtr;
 end;
 
 procedure THashedContainer.InitIterator(out _AIterator);
