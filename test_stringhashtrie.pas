@@ -431,7 +431,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesHash32;
 const
-  Count = 24011;
+  Count = 1024 * 1024;
 var
   i, Cnt : integer;
   AIterator : THashTrieIterator;

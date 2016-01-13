@@ -540,7 +540,7 @@ var
 begin
   for i := 0 to ChildrenCount - 1 do
     FreeTrieNode(@PTrieLeafNode(@Arr^[i * Integer(LeafSize)])^.Base, Level);
-  //FreeMem(Arr);
+  FreeMem(Arr);
 end;
 
 procedure TTrie.CleanLowBitsIteratorLastResult(var AIterator: TTrieIterator;
