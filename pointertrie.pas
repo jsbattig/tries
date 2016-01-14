@@ -41,16 +41,18 @@ type
     function GetItem(Index: Integer): Pointer;
   public
     constructor Create;
-    procedure Add(p : Pointer);
-    function Find(p : Pointer) : Boolean;
-    procedure Remove(p : Pointer);
-    function Next(var AIterator : TTrieIterator) : Pointer;
+    procedure Add(p : Pointer); reintroduce;
+    function Find(p : Pointer) : Boolean; reintroduce;
+    procedure Remove(p : Pointer); reintroduce;
+    function Next(var AIterator : TTrieIterator) : Pointer; reintroduce;
     property Items[Index: Integer]: Pointer read GetItem; default;
-    property AllowDuplicates;
     property RandomAccessMode;
   end;
 
 implementation
+
+uses
+  hashedcontainer;
 
 { TPointerTrie }
 
@@ -74,7 +76,7 @@ end;
 
 function TPointerTrie.Find(p: Pointer): Boolean;
 begin
-  Result := inherited Find(p);
+  Result := inherited _Find(p);
 end;
 
 procedure TPointerTrie.Remove(p: Pointer);
@@ -85,7 +87,7 @@ end;
 function TPointerTrie.Next(var AIterator: TTrieIterator): Pointer;
 begin
   if inherited Next(AIterator) then
-    Result := AIterator.LastResultPtr
+    Result := AIterator.Base.LastResultPtr
   else Result := nil;
 end;
 

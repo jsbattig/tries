@@ -46,51 +46,14 @@ unit Trie;
 interface
 
 uses
-  SysUtils;
+  SysUtils, uAllocators, HashedContainer;
 
 const
-  BitsPerByte                = 8;
-  BitsForChildIndexPerBucket = 4;   // Don't play with this knob, code designed to work on this specific value
-  BucketMask                 = $F;  // Don't play with this knob, code designed to work on this specific value
-  MaxTrieDepth               = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
-  ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
-  TrieDepth16Bits            = (sizeof(Word) * BitsPerByte) div BitsForChildIndexPerBucket;
-  TrieDepth32Bits            = (sizeof(Integer) * BitsPerByte) div BitsForChildIndexPerBucket;
-  TrieDepth64Bits            = (sizeof(Int64) * BitsPerByte) div BitsForChildIndexPerBucket;
-  TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
+  MaxTrieDepth = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
 
 type
-  _Int64 = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
-
-  PTrieBaseNode = ^TTrieBaseNode;
-  TTrieBaseNode = record
-    ChildrenCount : Word;
-    Busy : Word;
-  end;
-
-  PTrieBranchNode = ^TTrieBranchNode;
-
   TTrieNodeArray = array[0..ChildrenPerBucket - 1] of PTrieBranchNode;
   PTrieNodeArray = ^TTrieNodeArray;
-
-  TTrieBranchNode = record
-    Base : TTrieBaseNode;
-    ChildIndex : Int64;
-    Children : Pointer;
-  end;
-
-  PTrieLeafNode = ^TTrieLeafNode;
-  TTrieLeafNode = record
-    Base : TTrieBaseNode;
-  end;
-
-  TTrieLeafNodeArray = array[0..MaxInt - 1] of Byte;
-  PTrieLeafNodeArray = ^TTrieLeafNodeArray;
-
-  TTrieStats = record
-    NodeCount : Integer;
-    TotalMemAllocated : Int64;
-  end;
 
   (*
     IMPORTANT NOTE ON Delphi 2007:
@@ -107,15 +70,10 @@ type
     as packed and the fields are padded.
   *)
   TTrieIterator = packed record
-    AtEnd : Boolean; _Padding1 : array [1..3] of Byte;       // 0..3
-    Level : SmallInt; _Padding2 : array [1..2] of Byte;      // 4..7
-    BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;    // 8..39
-    NodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode; // 32bits: 40..103  | 64bits: 40..167
-    case Integer of                                          // 32bits: 104..111 | 64bits: 168..171
-      TrieDepth16Bits       : (LastResult16 : Word;);
-      TrieDepth32Bits       : (LastResult32 : Integer;);
-      TrieDepth64Bits       : (LastResult64 : _Int64;);
-      -TrieDepthPointerSize : (LastResultPtr : Pointer;);
+    Base : THashedContainerIterator;
+    Level : SmallInt; _Padding2 : array [1..2] of Byte;
+    BreadCrumbs : array[0..MaxTrieDepth - 1] of SmallInt;
+    NodeStack : array[0..MaxTrieDepth - 1] of PTrieBaseNode;
   end;
 
   { TTrie }
@@ -126,71 +84,49 @@ type
   ETrieDuplicate = class(ETrie);
   ETrieRandomAccess = class(ETrie);
 
-  TTrie = class
+  TTrie = class(THashedContainer)
   private
     FRandomAccessMode: TTrieRandomAccessMode;
     FRoot : PTrieBranchNode;
-    FAllowDuplicates : Boolean;
     FRandomAccessIterator : TTrieIterator;
     FLastIndex : Integer;
-    FTrieDepth : Byte;
     FLastMidBranchNode : Byte;
+    FTrieBranchNodeAllocator : TFixedBlockHeap;
+    FTrieDepth: Byte;
     function NewTrieBranchNode : PTrieBranchNode;
     function AddChild(ANode : PTrieBranchNode; Level : Byte) : Integer;
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
-    function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean; inline;
+    function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
     procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
     procedure CleanLowBitsIteratorLastResult(var AIterator : TTrieIterator; ATrieDepth : Byte); inline;
+    function TrieDepthToHashSize(ATrieDepth: Byte): Byte; inline;
   protected
-    FStats : TTrieStats;
     FCount : Integer;
-    function InternalFind(const Data; out ANode: PTrieLeafNode; out AChildIndex:
-        Byte; LeafHasChildIndex: Boolean): Boolean;
-    function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte) : Boolean; inline;
-    procedure SetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte; Value : Boolean); inline;
-    function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte) : Byte; inline;
-    procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); {$IFDEF FPC} inline; {$ENDIF}
-    function GetBitFieldIndex(const Data; Level : Byte) : Byte;
-    function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean;
-    function Find(const Data) : Boolean;
-    procedure Remove(const Data);
-    function Next(var AIterator : TTrieIterator; ADepth : Byte = 0) : Boolean;
-    function LeafSize : Cardinal; virtual;
-    procedure InitLeaf(var Leaf); virtual;
-    procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte); virtual;
+    procedure InitLeaf(var Leaf);
+    procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure RaiseTrieDepthError;
-    procedure RaiseDuplicateKeysNotAllowed;
     property Items[Index: Integer]: Pointer read GetItem;
-    property TrieDepth : Byte read FTrieDepth;
-    property AllowDuplicates : Boolean read FAllowDuplicates write FAllowDuplicates;
     property RandomAccessMode : TTrieRandomAccessMode read FRandomAccessMode write FRandomAccessMode;
+    property TrieDepth: Byte read FTrieDepth;
   public
-    constructor Create(ATrieDepth : Byte);
+    constructor Create(ATrieDepth: Byte; ALeafSize: Cardinal = sizeof(TTrieLeafNode));
     destructor Destroy; override;
-    procedure Clear; virtual;
-    procedure InitIterator(out AIterator : TTrieIterator);
-    procedure Pack; virtual;
+    procedure Clear; override;
+    function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; override;
+    procedure Remove(const Data); override;
+    function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte;
+                  LeafHasChildIndex: Boolean): Boolean; override;
+    function GetObjectFromIterator(const _AIterator): Pointer; override;
+    procedure InitIterator(out _AIterator); override;
+    function Next(var _AIterator; ADepth: Byte = 0): Boolean; override;
+    procedure Pack; override;
     property Count : Integer read FCount;
-    property Stats : TTrieStats read FStats;
   end;
 
 implementation
-
-const
-  ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
-    (12, 8, 4, 0);
-  ChildIndexShiftArray32 : array[0..TrieDepth32Bits - 1] of Byte =
-    (28, 24, 20, 16, 12, 8, 4, 0);
-  ChildIndexShiftArray64 : array[0..TrieDepth64Bits - 1] of Byte =
-    (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0);
-  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of _Int64 =
-    ($FFFFFFFFFFFFFFF0, $FFFFFFFFFFFFFF0F, $FFFFFFFFFFFFF0FF, $FFFFFFFFFFFF0FFF,
-     $FFFFFFFFFFF0FFFF, $FFFFFFFFFF0FFFFF, $FFFFFFFFF0FFFFFF, $FFFFFFFF0FFFFFFF,
-     $FFFFFFF0FFFFFFFF, $FFFFFF0FFFFFFFFF, $FFFFF0FFFFFFFFFF, $FFFF0FFFFFFFFFFF,
-     $FFF0FFFFFFFFFFFF, $FF0FFFFFFFFFFFFF, $F0FFFFFFFFFFFFFF, $0FFFFFFFFFFFFFFF);
 
 resourcestring
   STR_DUPLICATESNOTALLOWED = 'Duplicates not allowed';
@@ -202,13 +138,14 @@ resourcestring
 
 { TTrie }
 
-constructor TTrie.Create(ATrieDepth: Byte);
+constructor TTrie.Create(ATrieDepth: Byte; ALeafSize: Cardinal = sizeof(
+    TTrieLeafNode));
 begin
-  inherited Create;
+  inherited Create(TrieDepthToHashSize(ATrieDepth), ALeafSize);
+  FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
-  if (ATrieDepth <> TrieDepth32Bits) and (ATrieDepth <> TrieDepth64Bits) and
-     (ATrieDepth <> TrieDepth16Bits) then
+  if (ATrieDepth < 4) or (ATrieDepth > 64) then
     RaiseTrieDepthError;
   FTrieDepth := ATrieDepth;
   FLastMidBranchNode := FTrieDepth - 3;
@@ -217,33 +154,28 @@ end;
 destructor TTrie.Destroy;
 begin
   FreeTrieNode(@FRoot^.Base, 0);
+  FTrieBranchNodeAllocator.Free;
   inherited Destroy;
 end;
 
 function TTrie.NewTrieBranchNode : PTrieBranchNode;
 begin
-  GetMem(Result, sizeof(TTrieBranchNode));
+  Result := FTrieBranchNodeAllocator.Alloc;
   Result^.Base.Busy := 0;
   Result^.Base.ChildrenCount := 0;
   Result^.Children := nil;
   Result^.ChildIndex := 0;
-  inc(FStats.NodeCount);
-  inc(FStats.TotalMemAllocated, sizeof(TTrieBranchNode));
 end;
 
 procedure TTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);
 begin
+  inherited;
   if Level in [0..FLastMidBranchNode] then
     FreeTrieBranchNodeArray(PTrieNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1)
   else if Level = FLastMidBranchNode + 1 then
     FreeTrieLeafNodeArray(PTrieLeafNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1);
   if Level < FTrieDepth - 1 then
-  begin
-    FreeMem(ANode);
-    dec(FStats.TotalMemAllocated, sizeof(TTrieBranchNode));
-  end
-  else dec(FStats.TotalMemAllocated, LeafSize);
-  dec(FStats.NodeCount);
+    uAllocators.DeAlloc(ANode);
 end;
 
 procedure TTrie.RaiseTrieDepthError;
@@ -251,76 +183,25 @@ begin
   raise ETrie.Create(STR_TRIEDEPTHERROR);
 end;
 
-procedure TTrie.RaiseDuplicateKeysNotAllowed;
-begin
-  raise ETrieDuplicate.Create(STR_DUPLICATESNOTALLOWED);
-end;
-
 function TTrie.AddChild(ANode: PTrieBranchNode; Level: Byte
   ): Integer;
-  procedure ReallocArray(var Arr : Pointer; NewCount, ObjSize : Cardinal);
-  begin
-    ReallocMem(Arr, NewCount * ObjSize);
-    inc(FStats.TotalMemAllocated, ObjSize);
-  end;
 begin
   if Level <= FLastMidBranchNode then
   begin
-    ReallocArray(ANode^.Children, ANode^.Base.ChildrenCount + 1, sizeof(Pointer));
+    ReallocMem(ANode^.Children, (ANode^.Base.ChildrenCount + 1) * sizeof(Pointer));
     PTrieNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount] := NewTrieBranchNode();
   end
   else
   begin
-    ReallocArray(ANode^.Children, ANode^.Base.ChildrenCount + 1, LeafSize);
+    ReallocMem(ANode^.Children, (ANode^.Base.ChildrenCount + 1) * LeafSize);
     InitLeaf(PTrieLeafNode(@PTrieLeafNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount * LeafSize])^);
-    inc(FStats.NodeCount);
   end;
   Result := ANode^.Base.ChildrenCount;
   inc(ANode^.Base.ChildrenCount);
 end;
 
-function TTrie.GetBitFieldIndex(const Data; Level: Byte): Byte;
-begin
-  {$IFNDEF FPC}
-  Result := 0;
-  {$ENDIF}
-  case FTrieDepth of
-    TrieDepth16Bits : Result := (Word(Data) shr ChildIndexShiftArray16[Level]) and BucketMask;
-    TrieDepth32Bits : Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask;
-    TrieDepth64Bits : Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
-    else RaiseTrieDepthError;
-  end;
-end;
-
-function TTrie.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex: Byte
-  ): Byte;
-begin
-  Result := (ANode^.ChildIndex shr (Int64(BitFieldIndex) * BitsForChildIndexPerBucket)) and BucketMask;
-end;
-
-procedure TTrie.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
-  ChildIndex: Byte);
-begin
-  ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask[BitFieldIndex];
-  ANode^.ChildIndex := ANode^.ChildIndex or (_Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
-end;
-
-function TTrie.GetBusyIndicator(ANode: PTrieBaseNode;
-  BitFieldIndex: Byte): Boolean;
-begin
-  Result := (ANode^.Busy and (Word(1) shl BitFieldIndex)) <> 0;
-end;
-
-procedure TTrie.SetBusyIndicator(ANode: PTrieBaseNode;
-  BitFieldIndex: Byte; Value: Boolean);
-begin
-  if Value then
-    ANode^.Busy := ANode^.Busy or (Word(1) shl BitFieldIndex)
-  else ANode^.Busy := ANode^.Busy and not (Word(1) shl BitFieldIndex);
-end;
-
-function TTrie.InternalFind(const Data; out ANode: PTrieLeafNode; out
-    AChildIndex: Byte; LeafHasChildIndex: Boolean): Boolean;
+function TTrie.Find(const Data; out ANode: PTrieLeafNode; out AChildIndex:
+    Byte; LeafHasChildIndex: Boolean): Boolean;
 var
   i, BitFieldIndex, ATrieDepth : Byte;
   CurNode : PTrieBaseNode;
@@ -368,7 +249,7 @@ begin
     FLastIndex := -1;
     InitIterator(FRandomAccessIterator);
   end;
-  Result := @FRandomAccessIterator.LastResult64;
+  Result := @FRandomAccessIterator.Base.LastResult64;
   if Index = FLastIndex then
     exit;
   repeat
@@ -381,8 +262,6 @@ end;
 procedure TTrie.Clear;
 begin
   FreeTrieNode(@FRoot^.Base, 0);
-  FStats.TotalMemAllocated := 0;
-  FStats.NodeCount := 0;
   FCount := 0;
   FRoot := NewTrieBranchNode();
 end;
@@ -402,9 +281,6 @@ begin
   for i := 0 to ATrieDepth - 1 do
   begin
     BitFieldIndex := GetBitFieldIndex(Data, i);
-    if (not FAllowDuplicates) and ( i = ATrieDepth - 1) and
-       GetBusyIndicator(CurNode, BitFieldIndex) then
-      RaiseDuplicateKeysNotAllowed;
     if i < ATrieDepth - 1 then
       if not GetBusyIndicator(CurNode, BitFieldIndex) then
       begin
@@ -428,34 +304,26 @@ begin
     inc(FCount);
 end;
 
-function TTrie.Find(const Data): Boolean;
-var
-  DummyChildIndex : Byte;
-  DummyNode : PTrieLeafNode;
-begin
-  Result := InternalFind(Data, DummyNode, DummyChildIndex, False);
-end;
-
 procedure TTrie.Remove(const Data);
 var
   ChildIndex : Byte;
   Node : PTrieLeafNode;
 begin
-  if InternalFind(Data, Node, ChildIndex, False) then
+  if Find(Data, Node, ChildIndex, False) then
   begin
     SetBusyIndicator(@Node^.Base, GetBitFieldIndex(Data, FTrieDepth - 1), False);
     dec(FCount);
   end;
 end;
 
-procedure TTrie.InitIterator(out AIterator: TTrieIterator);
+procedure TTrie.InitIterator(out _AIterator);
 var
   i, ATrieDepth: Byte;
+  AIterator : TTrieIterator absolute _AIterator;
 begin
+  inherited InitIterator(AIterator.Base);
   ATrieDepth := FTrieDepth;
-  AIterator.AtEnd := False;
   AIterator.Level := 0;
-  AIterator.LastResult64 := 0;
   for i := 0 to ATrieDepth - 1 do
   begin
     AIterator.BreadCrumbs[i] := 0;
@@ -513,7 +381,6 @@ begin
               PackingNode := True;
             end;
             dec(AIterator.NodeStack[AIterator.Level]^.ChildrenCount);
-            dec(FStats.TotalMemAllocated, sizeof(Pointer));
             SetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex, False);
             FreeTrieNode(@PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base, AIterator.Level + 1);
           end
@@ -528,11 +395,12 @@ begin
   end;
 end;
 
-function TTrie.Next(var AIterator: TTrieIterator; ADepth: Byte = 0): Boolean;
+function TTrie.Next(var _AIterator; ADepth: Byte = 0): Boolean;
 var
   ATrieDepth : Byte;
+  AIterator : TTrieIterator absolute _AIterator;
 begin
-  if AIterator.AtEnd then
+  if AIterator.Base.AtEnd then
   begin
     Result := False;
     exit;
@@ -543,7 +411,7 @@ begin
   if AIterator.Level = 0 then
   begin
     AIterator.NodeStack[0] := @FRoot^.Base;
-    AIterator.LastResult64 := 0;
+    AIterator.Base.LastResult64 := 0;
   end
   else CleanLowBitsIteratorLastResult(AIterator, ATrieDepth);
   repeat
@@ -552,9 +420,9 @@ begin
       if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], AIterator.BreadCrumbs[AIterator.Level] ) then
       begin
         case ATrieDepth of
-          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 or Word(AIterator.BreadCrumbs[AIterator.Level]);
-          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 or Integer(AIterator.BreadCrumbs[AIterator.Level]);
-          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 or _Int64(AIterator.BreadCrumbs[AIterator.Level]);
+          1..TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 or Word(AIterator.BreadCrumbs[AIterator.Level]);
+          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 or Integer(AIterator.BreadCrumbs[AIterator.Level]);
+          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 or _Int64(AIterator.BreadCrumbs[AIterator.Level]);
           else RaiseTrieDepthError;
         end;
         inc(AIterator.Level);
@@ -566,9 +434,9 @@ begin
           exit;
         end;
         case ATrieDepth of
-          1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shl BitsForChildIndexPerBucket;
-          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shl BitsForChildIndexPerBucket;
-          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 shl BitsForChildIndexPerBucket;
+          1..TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 shl BitsForChildIndexPerBucket;
+          TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 shl BitsForChildIndexPerBucket;
+          TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 shl BitsForChildIndexPerBucket;
           else RaiseTrieDepthError;
         end;
         AIterator.NodeStack[AIterator.Level] := NextNode(PTrieBranchNode(AIterator.NodeStack[AIterator.Level - 1]), AIterator.Level - 1,
@@ -582,7 +450,7 @@ begin
       if not IteratorBacktrack(AIterator) then
         break;
   until False;
-  AIterator.AtEnd := True;
+  AIterator.Base.AtEnd := True;
   Result := False;
 end;
 
@@ -598,9 +466,9 @@ begin
     exit;
   end;
   case FTrieDepth of
-    TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 shr BitsForChildIndexPerBucket;
-    TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 shr BitsForChildIndexPerBucket;
-    TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 shr BitsForChildIndexPerBucket;
+    1..TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 shr BitsForChildIndexPerBucket;
+    TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 shr BitsForChildIndexPerBucket;
+    TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 shr BitsForChildIndexPerBucket;
     else RaiseTrieDepthError;
   end;
   CleanLowBitsIteratorLastResult(AIterator, FTrieDepth);
@@ -669,22 +537,30 @@ procedure TTrie.CleanLowBitsIteratorLastResult(var AIterator: TTrieIterator;
   ATrieDepth: Byte);
 begin
   case ATrieDepth of
-    1..TrieDepth16Bits : AIterator.LastResult16 := AIterator.LastResult16 and not Word(BucketMask);
-    TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.LastResult32 := AIterator.LastResult32 and not Integer(BucketMask);
-    TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.LastResult64 := AIterator.LastResult64 and not _Int64(BucketMask);
+    1..TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 and not Word(BucketMask);
+    TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 and not Integer(BucketMask);
+    TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 and not _Int64(BucketMask);
     else RaiseTrieDepthError;
   end;
 end;
 
-function TTrie.LeafSize: Cardinal;
+function TTrie.GetObjectFromIterator(const _AIterator): Pointer;
+var
+  AIterator : TTrieIterator absolute _AIterator;
 begin
-  Result := sizeof(TTrieLeafNode);
+  Result := AIterator.NodeStack[AIterator.Level];
 end;
 
 procedure TTrie.InitLeaf(var Leaf);
 begin
   TTrieLeafNode(Leaf).Base.Busy := 0;
   TTrieLeafNode(Leaf).Base.ChildrenCount := 0;
+  inherited;
+end;
+
+function TTrie.TrieDepthToHashSize(ATrieDepth: Byte): Byte;
+begin
+  Result := ATrieDepth * BitsForChildIndexPerBucket;
 end;
 
 end.

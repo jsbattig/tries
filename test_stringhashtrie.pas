@@ -37,27 +37,29 @@ type
   published
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddSeveralAndFind;
     procedure TestAddReplaceAndFind;
     procedure TestAddAndTraverse;
     procedure TestAddAndFindCaseInsensitive;
     procedure TestAddAndFindManyEntries;
     procedure TestAddIterateAndFindManyEntries;
-    procedure TestAddDuplicateAndFind;
-    procedure TestAddDuplicatesFailure;
     procedure TestAddAndFindHash16;
     procedure TestAddAndFindHash64;
+    procedure TestAddFindAndRemoveManyEntries;
     {$IFDEF HasGenerics}
     procedure TestAddAndFindManyEntriesUsingTDictionary;
     procedure TestAddIterateAndFindManyEntriesTDictionary;
     {$ENDIF}
-    procedure TestRemoveAndPack;
+    procedure TestRemoveAndPackHash32;
     procedure TestIterator;
-    procedure TestIteratorDuplicateString;
     procedure TestAutoFreeValue;
     procedure TestAddTwoValuesAndIterate;
     {$IFDEF UNICODE}
     procedure TestUnicodeChars;
     procedure TestAddAndTraverseUnicode;
+    procedure TestAddFindAndRemoveManyEntriesUsingTDictionary;
+    procedure TestAddIterateAndFindManyEntriesHash32;
+    procedure TestRemoveAndPack;
     {$ENDIF}
   end;
 
@@ -118,7 +120,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddIterateAndFindManyEntries;
 const
-  Count = 1024 * 1024;
+  Count = 1024 * 1024 * 1;
 var
   i, Cnt : integer;
   AIterator : THashTrieIterator;
@@ -127,6 +129,7 @@ var
 begin
   for i := 0 to Count - 1 do
     FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+  Check(FStrHashTrie.Find('0hello'), 'Should find first element');
   FStrHashTrie.InitIterator(AIterator);
   Cnt := 0;
   while FStrHashTrie.Next(AIterator, AKey, AValue) do
@@ -137,38 +140,12 @@ begin
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
-procedure TStringHashTrieTest.TestAddDuplicateAndFind;
-var
-  Value : Pointer;
-begin
-  FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.Add('Hello World', Self);
-  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  Check(FStrHashTrie.Remove('Hello World'), 'Remove should return True');
-  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  Check(FStrHashTrie.Remove('Hello World'), 'Remove should return True');
-  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
-  Check( not FStrHashTrie.Remove('Hello World'), 'Remove should return False');
-end;
-
-procedure TStringHashTrieTest.TestAddDuplicatesFailure;
-begin
-  FStrHashTrie.DuplicatesMode := dmNotAllow;
-  FStrHashTrie.Add('Hello World', Self);
-  try
-    FStrHashTrie.Add('Hello World', Self);
-    Fail('Should fail when adding duplicate');
-  except
-    on E : ETrieDuplicate do {};
-  end;
-end;
-
 procedure TStringHashTrieTest.TestAddAndFindHash16;
 var
   Value : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs16);
+  FStrHashTrie := TStringHashTrie.Create(16);
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
@@ -179,39 +156,26 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs64);
+  FStrHashTrie := TStringHashTrie.Create(64);
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestRemoveAndPack;
+procedure TStringHashTrieTest.TestRemoveAndPackHash32;
 var
   Value : Pointer;
-  PrevMemAllocated : Cardinal;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs32);
+  FStrHashTrie := TStringHashTrie.Create(32);
   FStrHashTrie.Add('Hello World', Self);
-  CheckEquals(sizeof(TTrieBranchNode) * 8 + length('Hello World') + 1 +
-              sizeof(Pointer) * 7 + sizeof(TKeyValuePairNode) * 1,
-              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
   FStrHashTrie.Add('Hello World 2', Self);
-  CheckEquals(15, FStrHashTrie.Stats.NodeCount, 'Node count should be 8 after Pack');
-  CheckEquals(sizeof(TTrieBranchNode) * 15 + length('Hello World 2') + 1 + length('Hello World') + 1 +
-              sizeof(Pointer) * 14 + sizeof(TKeyValuePairNode) * 2,
-              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  PrevMemAllocated := FStrHashTrie.Stats.TotalMemAllocated;
   FStrHashTrie.Pack;
-  CheckEquals(PrevMemAllocated, FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated doesn''t match');
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   FStrHashTrie.Remove('Hello World');
   Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
   FStrHashTrie.Pack;
-  CheckEquals(8, FStrHashTrie.Stats.NodeCount, 'Node count should be 8 after Pack');
-  CheckEquals(sizeof(TTrieBranchNode) * 8 + length('Hello World 2') + 1 + sizeof(Pointer) * 7 + sizeof(TKeyValuePairNode),
-              FStrHashTrie.Stats.TotalMemAllocated, 'Mem allocated should match size of TTrieBranchNode');
 end;
 
 procedure TStringHashTrieTest.TestIterator;
@@ -225,22 +189,6 @@ begin
   Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
   CheckEquals('Hello World', AKey, 'AKey doesn''t match');
   Check(AValue = Pointer(Self), 'Value of AValue doesn''t match');
-  Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
-end;
-
-procedure TStringHashTrieTest.TestIteratorDuplicateString;
-var
-  AIterator : THashTrieIterator;
-  AKey : AnsiString;
-  AValue : Pointer;
-begin
-  FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.InitIterator(AIterator);
-  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
-  CheckEquals('Hello World', AKey, 'AKey doesn''t match');
-  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
-  CheckEquals('Hello World', AKey, 'AKey doesn''t match');
   Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
 end;
 
@@ -270,9 +218,9 @@ begin
   FStrHashTrie.Add('Hello World 2', Self);
   FStrHashTrie.InitIterator(AIterator);
   Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
-  CheckEquals('Hello World', AKey, 'AKey doesn''t match');
-  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
   CheckEquals('Hello World 2', AKey, 'AKey doesn''t match');
+  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
+  CheckEquals('Hello World', AKey, 'AKey doesn''t match');
   Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
 end;
 
@@ -286,11 +234,22 @@ begin
   FStrHashTrie.Free;
 end;
 
+procedure TStringHashTrieTest.TestAddSeveralAndFind;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.Add('Hello World', Self);
+  FStrHashTrie.Add('Hello World 2', Self);
+  FStrHashTrie.Add('Hello World 3', Self);
+  FStrHashTrie.Add('Hello World 4', Self);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+end;
+
 procedure TStringHashTrieTest.TestAddReplaceAndFind;
 var
   Value : Pointer;
 begin
-  FStrHashTrie.DuplicatesMode := dmReplaceExisting;
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
@@ -316,6 +275,31 @@ begin
   FStrHashTrie.Add(AnsiString('Hello World'), Self);
   Check(FStrHashTrie.Find(AnsiString('hello world'), Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
+end;
+
+procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntries;
+const
+  Count = 1024 * 1024 * 1;
+var
+  List : TStringList;
+  i : integer;
+begin
+  List := TStringList.Create;
+  try
+    for i := 0 to Count - 1 do
+    begin
+      List.Add(IntToStr(i) + 'hello ' + IntToStr(Count - i));
+      FStrHashTrie.Add(AnsiString(List[i]), {%H-}Pointer(i));
+    end;
+    CheckEquals(Count, FStrHashTrie.Count, 'Count doesn''t match');
+    for i := 0 to List.Count - 1 do
+      Check(FStrHashTrie.Find(List[i]), 'Item not found');
+    for i := 0 to List.Count - 1 do
+      Check(FStrHashTrie.Remove(List[i]), 'Failed to remove item ' + List[i]);
+    CheckEquals(0, FStrHashTrie.Count);
+  finally
+    List.Free;
+  end;
 end;
 
 {$IFDEF HasGenerics}
@@ -364,7 +348,7 @@ end;
 
 procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesTDictionary;
 const
-  Count = 1024 * 1024;
+  Count = 1024 * 1024 * 1;
 var
   i, Cnt : integer;
   AValue : Pointer;
@@ -411,6 +395,76 @@ procedure TStringHashTrieTest.TestAddAndTraverseUnicode;
 begin
   FStrHashTrie.Add('Привет мир', Self);
   FStrHashTrie.Traverse(nil, TraverseMethUnicode);
+end;
+
+procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntriesUsingTDictionary;
+const
+  Count = 1024 * 1024 * 1;
+var
+  List : TStringList;
+  i : integer;
+  FDict : TDictionary<AnsiString, pointer>;
+  AValue : Pointer;
+begin
+  FDict := TDictionary<AnsiString, pointer>.Create;
+  try
+    List := TStringList.Create;
+    try
+      for i := 0 to Count - 1 do
+      begin
+        List.Add(IntToStr(i) + 'hello ' + IntToStr(Count - i));
+        FDict.Add(AnsiString(List[i]), {%H-}Pointer(i));
+      end;
+      CheckEquals(Count, FDict.Count, 'Count doesn''t match');
+      for i := 0 to List.Count - 1 do
+        Check(FDict.TryGetValue(AnsiString(List[i]), AValue), 'Item not found');
+      for i := 0 to List.Count - 1 do
+        FDict.Remove(AnsiString(List[i]));
+      CheckEquals(0, FDict.Count);
+    finally
+      List.Free;
+    end;
+  finally
+    FDict.Free;
+  end;
+end;
+
+procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesHash32;
+const
+  Count = 1024 * 1024;
+var
+  i, Cnt : integer;
+  AIterator : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Free;
+  FStrHashTrie := TStringHashTrie.Create(32);
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+  Check(FStrHashTrie.Find('0hello'), 'Should find first element');
+  FStrHashTrie.InitIterator(AIterator);
+  Cnt := 0;
+  while FStrHashTrie.Next(AIterator, AKey, AValue) do
+  begin
+    Check(FStrHashTrie.Find(AKey, AValue), 'Item not found');
+    inc(Cnt);
+  end;
+  CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
+end;
+
+procedure TStringHashTrieTest.TestRemoveAndPack;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.Add('Hello World', Self);
+  FStrHashTrie.Add('Hello World 2', Self);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Pack;
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Remove('Hello World');
+  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  FStrHashTrie.Pack;
 end;
 
 procedure TStringHashTrieTest.TraverseMethUnicode({%H-}UserData: Pointer; Key:

@@ -26,3 +26,5 @@
 /uCnvPChar.pas
 /TestTriesLazarus
 /TestTriesLazarus.app/
+/DelphiVersion_defines.inc
+/uAllocators.pas

@@ -9,7 +9,9 @@ interface
 uses
   SysUtils,
   Trie,
-  Hash_Trie
+  Hash_Trie,
+  uAllocators,
+  HashedContainer
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -29,6 +31,7 @@ type
   TStringHashTrie = class(THashTrie)
   private
     FCaseInsensitive: Boolean;
+    FPAnsiCharAllocator : TVariableBlockHeap;
     procedure InitTraversal(out It : THashTrieIterator; out ADone : Boolean); inline;
     {$IFDEF UNICODE}
     procedure CheckCaseInsensitiveWithUTF16; inline;
@@ -36,21 +39,25 @@ type
   protected
     function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
         {%H-}KeySize2: Cardinal): Boolean; override;
-    function Hash32(key: Pointer; KeySize: Cardinal): Cardinal; override;
+    function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; override;
     procedure FreeKey({%H-}key : Pointer); override;
+    function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64;
+        override;
   public
-    constructor Create(AHashSize : THashSize = hs16);
+    constructor Create(AHashSize: Byte = 20);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
-    function Find(const key: AnsiString; out Value: Pointer): Boolean; overload;
-    function Find(const key: AnsiString): Boolean; overload;
+    function Find(const key: AnsiString; out Value: Pointer): Boolean; reintroduce; overload;
+    function Find(const key: AnsiString): Boolean; reintroduce; overload;
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
         Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
+    destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
-    function Find(const key : String; out Value: Pointer): Boolean; overload;
+    function Find(const key : String; out Value: Pointer): Boolean; reintroduce; overload;
+    function Find(const key: String): Boolean; reintroduce; overload;
     function Remove(const key: String): Boolean; overload;
     function Next(var AIterator: THashTrieIterator; out key: String; out Value: Pointer): Boolean; overload;
     procedure Traverse(UserData: Pointer; UserProc: TUTF16StrHashTraverseProc); overload;
@@ -62,13 +69,20 @@ type
 implementation
 
 uses
-  uSuperFastHash;
+  xxHash;
 
 { TStringHashTrie }
 
-constructor TStringHashTrie.Create(AHashSize: THashSize);
+constructor TStringHashTrie.Create(AHashSize: Byte = 20);
 begin
   inherited Create(AHashSize);
+  FPAnsiCharAllocator := TVariableBlockHeap.Create(MAX_MEDIUM_BLOCK_SIZE);
+end;
+
+destructor TStringHashTrie.Destroy;
+begin
+  inherited;
+  FPAnsiCharAllocator.Free;
 end;
 
 function TStringHashTrie.CompareKeys(key1: Pointer; KeySize1: Cardinal; key2:
@@ -79,15 +93,23 @@ begin
   else Result := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrComp(PAnsiChar(key1), PAnsiChar(key2)) = 0;
 end;
 
-function TStringHashTrie.Hash32(key: Pointer; KeySize: Cardinal): Cardinal;
+function TStringHashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal):
+    Cardinal;
+var
+  Upper : AnsiString;
 begin
-  Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
+  if FCaseInsensitive then
+  begin
+    Upper := UpperCase(AnsiString(PAnsiChar(key)));
+    Result := Cardinal(xxHash32Calc(PAnsiChar(Upper), KeySize, ASeed));
+  end
+  else Result := Cardinal(xxHash32Calc(key, KeySize, ASeed));
 end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
-  dec(FStats.TotalMemAllocated, Int64({$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrLen(PAnsiChar(key))) + 1);
-  {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
+  //{$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
+  uAllocators.DeAlloc(key);
 end;
 
 function TStringHashTrie.Add(const key: AnsiString; Value: Pointer = nil):
@@ -95,11 +117,11 @@ function TStringHashTrie.Add(const key: AnsiString; Value: Pointer = nil):
 var
   kvp : TKeyValuePair;
 begin
-  kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
-  kvp.Value := Value;
   kvp.KeySize := length(Key);
+  kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
+  move(PAnsiChar(key)^, kvp.Key^, kvp.KeySize + 1);
+  kvp.Value := Value;
   Result := inherited Add(kvp);
-  inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 
 {$IFDEF UNICODE}
@@ -118,11 +140,11 @@ var
 begin
   CheckCaseInsensitiveWithUTF16;
   UTF8Str := UTF8String(key);
-  kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8Str));
-  kvp.Value := Value;
   kvp.KeySize := length(UTF8Str);
+  kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
+  move(PAnsiChar(UTF8Str)^, kvp.Key^, kvp.KeySize + 1);
+  kvp.Value := Value;
   Result := inherited Add(kvp);
-  inc(FStats.TotalMemAllocated, Int64(length(key)) + 1);
 end;
 {$ENDIF}
 
@@ -156,6 +178,13 @@ begin
     Value := kvp^.Value
   else Value := nil;
 end;
+
+function TStringHashTrie.Find(const key: String): Boolean;
+var
+  Dummy : Pointer;
+begin
+  Result := Find(key, Dummy);
+end;
 {$ENDIF}
 
 function TStringHashTrie.Find(const key: AnsiString): Boolean;
@@ -163,6 +192,19 @@ var
   Dummy : Pointer;
 begin
   Result := Find(key, Dummy);
+end;
+
+function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed:
+    _Int64): Int64;
+var
+  Upper : AnsiString;
+begin
+  if FCaseInsensitive then
+  begin
+    Upper := UpperCase(AnsiString(PAnsiChar(key)));
+    Result := Cardinal(xxHash64Calc(PAnsiChar(Upper), KeySize, ASeed));
+  end
+  else Result := Cardinal(xxHash64Calc(key, KeySize, ASeed));
 end;
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;
