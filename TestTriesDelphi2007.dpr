@@ -30,7 +30,8 @@ uses
   test_old_stringhashtrie in 'test_old_stringhashtrie.pas',
   uAllocators in 'uAllocators.pas',
   hashedcontainer in 'hashedcontainer.pas',
-  hash_table in 'hash_table.pas';
+  hash_table in 'hash_table.pas',
+  xxhash in 'xxhash.pas';
 
 {$R *.RES}
 

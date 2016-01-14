@@ -145,7 +145,7 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs16);
+  FStrHashTrie := TStringHashTrie.Create(16);
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
@@ -156,7 +156,7 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs64);
+  FStrHashTrie := TStringHashTrie.Create(64);
   FStrHashTrie.Add('Hello World', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
@@ -167,7 +167,7 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs32);
+  FStrHashTrie := TStringHashTrie.Create(32);
   FStrHashTrie.Add('Hello World', Self);
   FStrHashTrie.Add('Hello World 2', Self);
   Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
@@ -439,7 +439,7 @@ var
   AValue : Pointer;
 begin
   FStrHashTrie.Free;
-  FStrHashTrie := TStringHashTrie.Create(hs32);
+  FStrHashTrie := TStringHashTrie.Create(32);
   for i := 0 to Count - 1 do
     FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
   Check(FStrHashTrie.Find('0hello'), 'Should find first element');

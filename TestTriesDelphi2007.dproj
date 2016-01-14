@@ -60,6 +60,7 @@
     <DCCReference Include="test_stringhashtrie.pas" />
     <DCCReference Include="trie.pas" />
     <DCCReference Include="uAllocators.pas" />
+    <DCCReference Include="xxhash.pas" />
   </ItemGroup>
 </Project>
 <!-- EurekaLog First Line

@@ -7,7 +7,7 @@ unit IntegerHashTrie;
 interface
 
 uses
-  SysUtils, Trie, Hash_Trie;
+  SysUtils, Trie, Hash_Trie, HashedContainer;
 
 type
   TIntHashTraverseProc = procedure(UserData: Pointer; Value: integer;
@@ -32,11 +32,11 @@ type
   protected
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; override;
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize, ASeed:
-        Cardinal); override;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
+        ASeed: _Int64; AHashSize: Byte); override;
     procedure FreeKey(key : Pointer); override;
   public
-    constructor Create(AHashSize : THashSize = hs32);
+    constructor Create(AHashSize: Byte = 32);
     function Add(key: Cardinal; Value: Pointer = nil): Boolean; overload;
     function Add(key: Word; Value: Pointer = nil): Boolean; overload;
     function Add(key: Int64; Value: Pointer = nil): Boolean; overload;
@@ -64,7 +64,7 @@ implementation
 
 { TIntegerHashTrie }
 
-constructor TIntegerHashTrie.Create(AHashSize: THashSize);
+constructor TIntegerHashTrie.Create(AHashSize: Byte = 32);
 begin
   inherited Create(AHashSize);
 end;
@@ -88,19 +88,19 @@ begin
 end;
 
 procedure TIntegerHashTrie.CalcHash(out Hash: THashRecord; key: Pointer;
-    KeySize, ASeed: Cardinal);
+    KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
 var
   AKey : Pointer;
 begin
   if KeySize <= sizeof(Pointer) then
     AKey := @key
   else AKey := Key;
-  inherited CalcHash(Hash, AKey, KeySize, ASeed);
+  inherited CalcHash(Hash, AKey, KeySize, ASeed, AHashSize);
 end;
 
 procedure TIntegerHashTrie.FreeKey(key: Pointer);
 begin
-  if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
+  if (HashSize > 32) and (sizeof(Pointer) <> sizeof(Int64)) then
     Dispose(PInt64(key));
 end;
 
@@ -118,7 +118,7 @@ function TIntegerHashTrie.Add(key: Int64; Value: Pointer = nil): Boolean;
 var
   keyInt64 : PInt64;
 begin
-  if (HashSize = hs64) and (sizeof(Pointer) <> sizeof(Int64)) then
+  if (HashSize > 32) and (sizeof(Pointer) <> sizeof(Int64)) then
   begin
     New(keyInt64);
     keyInt64^ := key;

@@ -9,6 +9,8 @@ const
   MAX_HASH_TABLE_INDEX = 65535;
 
 type
+  PHashTableNodeArray = ^THashTableNodeArray;
+  THashTableNodeArray = array[Word] of PTrieLeafNode;
   THashTableIterator = record
     Base : THashedContainerIterator;
     Index : Word;
@@ -18,8 +20,10 @@ type
 
   THashTable = class(THashedContainer)
   private
-    FHashTable : array[Word] of PTrieLeafNode;
+    FHashTable : PHashTableNodeArray;
+    FHashTableMaxNodeCount : Cardinal;
     FLeafNodesAllocator : TFixedBlockHeap;
+    function GetTableIndex(const Data): Word;
     function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
   protected
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
@@ -41,7 +45,7 @@ type
 implementation
 
 resourcestring
-  SNotSupportedHashSize = 'Not supported hash size';
+  SNotSupportedHashSize = 'Not supported hash size. Valid sizes are 16 to 20 bits';
 
 { THashTable }
 
@@ -49,10 +53,12 @@ constructor THashTable.Create(AHashSize: Byte; ALeafSize: Cardinal);
 var
   i : integer;
 begin
-  if AHashSize <> sizeof(Word) then
+  if (AHashSize < sizeof(Word) * BitsPerByte) or (AHashSize > sizeof(Word) * BitsPerByte + BitsForChildIndexPerBucket) then
     raise EHashedContainer.Create(SNotSupportedHashSize);
   inherited;
-  for i := Low(FHashTable) to High(FHashTable) do
+  FHashTableMaxNodeCount := (1 shl AHashSize) div ChildrenPerBucket;
+  GetMem(FHashTable, FHashTableMaxNodeCount * sizeof(PTrieLeafNode));
+  for i := 0 to FHashTableMaxNodeCount - 1 do
     FHashTable[i] := nil;
   FLeafNodesAllocator := TFixedBlockHeap.Create(LeafSize, MAX_MEDIUM_BLOCK_SIZE div LeafSize);
 end;
@@ -62,21 +68,24 @@ begin
   inherited;
   Clear;
   FLeafNodesAllocator.Free;
+  FreeMem(FHashTable);
 end;
 
 function THashTable.Add(const Data; out Node : PTrieLeafNode; out WasBusy :
     Boolean): Boolean;
 var
   ABitFieldIndex : Byte;
+  ATableIndex : Word;
 begin
-  Result := FHashTable[Word(Data) div ChildrenPerBucket] = nil;
+  ATableIndex := GetTableIndex(Data);
+  Result := FHashTable[ATableIndex] = nil;
   if Result then
   begin
     Node := FLeafNodesAllocator.Alloc;
     InitLeaf(Node^);
-    FHashTable[Word(Data) div ChildrenPerBucket] := Node;
+    FHashTable[ATableIndex] := Node;
   end
-  else Node := FHashTable[Word(Data) div ChildrenPerBucket];
+  else Node := FHashTable[ATableIndex];
   ABitFieldIndex := GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1);
   WasBusy := GetBusyIndicator(@Node^.Base, ABitFieldIndex);
   if not WasBusy then
@@ -87,7 +96,7 @@ procedure THashTable.Clear;
 var
   i : integer;
 begin
-  for i := Low(FHashTable) to High(FHashTable) do
+  for i := 0 to FHashTableMaxNodeCount - 1 do
     if FHashTable[i] <> nil then
     begin
       FreeTrieNode(@FHashTable[i]^.Base, HashSizeToTrieDepth(HashSize) - 1);
@@ -99,13 +108,15 @@ function THashTable.Find(const Data; out ANode: PTrieLeafNode; out AChildIndex:
     Byte; LeafHasChildIndex: Boolean): Boolean;
 var
   ABitFieldIndex : Byte;
+  ATableIndex : Word;
 begin
+  ATableIndex := GetTableIndex(Data);
   ABitFieldIndex := GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1);
-  Result := (FHashTable[Word(Data) div ChildrenPerBucket] <> nil) and
-             GetBusyIndicator(@FHashTable[Word(Data) div ChildrenPerBucket]^.Base, ABitFieldIndex);
+  Result := (FHashTable[ATableIndex] <> nil) and
+             GetBusyIndicator(@FHashTable[ATableIndex]^.Base, ABitFieldIndex);
   if Result then
   begin
-    ANode := FHashTable[Word(Data) div ChildrenPerBucket];
+    ANode := FHashTable[ATableIndex];
     AChildIndex := GetChildIndex(@ANode^.Base, ABitFieldIndex);
   end
   else
@@ -126,6 +137,13 @@ begin
   Result := THashTableIterator(_AIterator).Node;
 end;
 
+function THashTable.GetTableIndex(const Data): Word;
+begin
+  if HashSize <= 16 then
+    Result := Word(Data) div ChildrenPerBucket
+  else Result := Cardinal(Data) div ChildrenPerBucket;
+end;
+
 procedure THashTable.InitIterator(out _AIterator);
 var
   AIterator : THashTableIterator absolute _AIterator;
@@ -137,13 +155,17 @@ begin
 end;
 
 function THashTable.Next(var _AIterator; ADepth: Byte = 0): Boolean;
+label
+  TableLoopExit;
 var
   AIterator : THashTableIterator absolute _AIterator;
 begin
-  AIterator.Node := nil;
+  if AIterator.Base.AtEnd then
+  begin
+    Result := False;
+    exit;
+  end;
   repeat
-    if AIterator.Base.AtEnd then
-      break;
     AIterator.Node := FHashTable[AIterator.Index];
     if AIterator.Node <> nil then
     begin
@@ -151,13 +173,15 @@ begin
       while AIterator.BitFieldIndex < ChildrenPerBucket do
       begin
         if GetBusyIndicator(@PTrieLeafNode(AIterator.Node)^.Base, AIterator.BitFieldIndex) then
-          break;
+          goto TableLoopExit;
         inc(AIterator.BitFieldIndex);
       end;
     end;
-    if (AIterator.Node = nil) or (AIterator.BitFieldIndex >= ChildrenPerBucket) then
+    if AIterator.BitFieldIndex >= ChildrenPerBucket then
+      AIterator.Node := nil;
+    if AIterator.Node = nil then
     begin
-      if AIterator.Index = MAX_HASH_TABLE_INDEX then
+      if AIterator.Index = FHashTableMaxNodeCount - 1 then
       begin
         AIterator.Base.AtEnd := True;
         break;
@@ -166,19 +190,20 @@ begin
       begin
         inc(AIterator.Index);
         AIterator.BitFieldIndex := -1;
-        AIterator.Node := nil;
       end;
     end;
-  until AIterator.Base.AtEnd or (AIterator.Node <> nil);
-  AIterator.Base.LastResult64 := (AIterator.Index * ChildrenPerBucket) + AIterator.BitFieldIndex;
+  until False;
+TableLoopExit:
   Result := AIterator.Node <> nil;
+  if Result then
+    AIterator.Base.LastResult64 := (Integer(AIterator.Index) * ChildrenPerBucket) + AIterator.BitFieldIndex;
 end;
 
 procedure THashTable.Pack;
 var
   i : integer;
 begin
-  for i := Low(FHashTable) to High(FHashTable) do
+  for i := 0 to FHashTableMaxNodeCount - 1 do
     if (FHashTable[i] <> nil) and (FHashTable[i]^.Base.Busy = NOT_BUSY) then
     begin
       FreeTrieNode(@FHashTable[i]^.Base, HashSizeToTrieDepth(HashSize) - 1);
@@ -187,21 +212,17 @@ begin
 end;
 
 procedure THashTable.Remove(const Data);
+var
+  ATableIndex : Word;
 begin
-  if FHashTable[Word(Data)] <> nil then
-  begin
-    FreeTrieNode(@FHashTable[Word(Data)]^.Base, HashSizeToTrieDepth(HashSize) - 1);
-    FHashTable[Word(Data)] := nil;
-  end;
+  ATableIndex := GetTableIndex(Data);
+  if FHashTable[ATableIndex] <> nil then
+    SetBusyIndicator(@FHashTable[ATableIndex]^.Base, GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1), False);
 end;
 
 function THashTable.HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin
-  if AHashSize <= sizeof(Word) then
-    Result := TrieDepth16Bits
-  else if AHashSize <= sizeof(Cardinal) then
-    Result := TrieDepth32Bits
-  else Result := TrieDepth64Bits;
+  Result := AHashSize div BitsForChildIndexPerBucket;
 end;
 
 procedure THashTable.InitLeaf(var Leaf);

@@ -10,7 +10,8 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  uAllocators
+  uAllocators,
+  HashedContainer
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -40,8 +41,10 @@ type
         {%H-}KeySize2: Cardinal): Boolean; override;
     function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; override;
     procedure FreeKey({%H-}key : Pointer); override;
+    function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64;
+        override;
   public
-    constructor Create(AHashSize : THashSize = hs16);
+    constructor Create(AHashSize: Byte = 20);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Find(const key: AnsiString; out Value: Pointer): Boolean; reintroduce; overload;
     function Find(const key: AnsiString): Boolean; reintroduce; overload;
@@ -70,7 +73,7 @@ uses
 
 { TStringHashTrie }
 
-constructor TStringHashTrie.Create(AHashSize: THashSize);
+constructor TStringHashTrie.Create(AHashSize: Byte = 20);
 begin
   inherited Create(AHashSize);
   FPAnsiCharAllocator := TVariableBlockHeap.Create(MAX_MEDIUM_BLOCK_SIZE);
@@ -117,7 +120,6 @@ begin
   kvp.KeySize := length(Key);
   kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
   move(PAnsiChar(key)^, kvp.Key^, kvp.KeySize + 1);
-  //kvp.Key := {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrNew(PAnsiChar(key));
   kvp.Value := Value;
   Result := inherited Add(kvp);
 end;
@@ -138,7 +140,6 @@ var
 begin
   CheckCaseInsensitiveWithUTF16;
   UTF8Str := UTF8String(key);
-  //kvp.Key := AnsiStrings.StrNew(PAnsiChar(UTF8Str));
   kvp.KeySize := length(UTF8Str);
   kvp.Key := FPAnsiCharAllocator.Alloc(kvp.KeySize + 1);
   move(PAnsiChar(UTF8Str)^, kvp.Key^, kvp.KeySize + 1);
@@ -191,6 +192,19 @@ var
   Dummy : Pointer;
 begin
   Result := Find(key, Dummy);
+end;
+
+function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed:
+    _Int64): Int64;
+var
+  Upper : AnsiString;
+begin
+  if FCaseInsensitive then
+  begin
+    Upper := UpperCase(AnsiString(PAnsiChar(key)));
+    Result := Cardinal(xxHash64Calc(PAnsiChar(Upper), KeySize, ASeed));
+  end
+  else Result := Cardinal(xxHash64Calc(key, KeySize, ASeed));
 end;
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;

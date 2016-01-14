@@ -32,12 +32,20 @@ const
   TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
 
-  ChildIndexShiftArray16 : array[0..TrieDepth16Bits - 1] of Byte =
-    (12, 8, 4, 0);
-  ChildIndexShiftArray32 : array[0..TrieDepth32Bits - 1] of Byte =
-    (28, 24, 20, 16, 12, 8, 4, 0);
-  ChildIndexShiftArray64 : array[0..TrieDepth64Bits - 1] of Byte =
-    (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12, 8, 4, 0);
+  ChildIndexShiftArray : array[TrieDepth16Bits..TrieDepth64Bits, 0..ChildrenPerBucket - 1] of Byte =
+    ((12, 8,   4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
+     (16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
+     (20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
+     (24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
+     (28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0),
+     (32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0),
+     (36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0),
+     (40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0),
+     (44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0),
+     (48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0),
+     (52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0),
+     (56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0),
+     (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0));
   CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of _Int64 =
     ($FFFFFFFFFFFFFFF0, $FFFFFFFFFFFFFF0F, $FFFFFFFFFFFFF0FF, $FFFFFFFFFFFF0FFF,
      $FFFFFFFFFFF0FFFF, $FFFFFFFFFF0FFFFF, $FFFFFFFFF0FFFFFF, $FFFFFFFF0FFFFFFF,
@@ -82,6 +90,7 @@ type
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte);
     procedure InitLeaf(var Leaf);
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
+    procedure RaiseHashSizeError; inline;
     property LeafSize : Cardinal read FLeafSize;
     property HashSize : Byte read FHashSize;
   public
@@ -131,9 +140,13 @@ begin
   Result := 0;
   {$ENDIF}
   case FHashSize of
-    sizeof(Word)     : Result := (Word(Data) shr ChildIndexShiftArray16[Level]) and BucketMask;
-    sizeof(Cardinal) : Result := (Integer(Data) shr ChildIndexShiftArray32[Level]) and BucketMask;
-    sizeof(Int64)    : Result := (Int64(Data) shr ChildIndexShiftArray64[Level]) and BucketMask;
+    1..sizeof(Word) * BitsPerByte :
+      Result := (Word(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+    sizeof(Word) * BitsPerByte + 1..sizeof(Cardinal) * BitsPerByte :
+      Result := (Integer(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+    sizeof(Cardinal) * BitsPerByte + 1..sizeof(Int64) * BitsPerByte :
+      Result := (Int64(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+    else RaiseHashSizeError;
   end;
 end;
 
@@ -161,6 +174,13 @@ procedure THashedContainer.InitLeaf(var Leaf);
 begin
   if assigned(FOnInitLeaf) then
     FOnInitLeaf(Leaf);
+end;
+
+procedure THashedContainer.RaiseHashSizeError;
+const
+  STR_HASHSIZEERROR = 'Wrong hash size';
+begin
+  raise EHashedContainer.Create(STR_HASHSIZEERROR);
 end;
 
 procedure THashedContainer.SetBusyIndicator(ANode: PTrieBaseNode;

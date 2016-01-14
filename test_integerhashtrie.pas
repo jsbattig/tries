@@ -58,7 +58,7 @@ procedure TIntegerHashTrieTest.TestAddAndTraverse32;
 var
   Key : Cardinal;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   FIntHashTrie.Traverse(nil, {$IFDEF FPC}@{$ENDIF}TraverseMeth);
@@ -69,7 +69,7 @@ var
   Key : Cardinal;
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   Check(FIntHashTrie.Find(Key, Value), 'Find should return True');
@@ -83,7 +83,7 @@ var
   Key : word;
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs16);
+  FIntHashTrie := TIntegerHashTrie.Create(16);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   Check(FIntHashTrie.Find(Key, Value), 'Find should return True');
@@ -97,7 +97,7 @@ var
   Key : Int64;
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs64);
+  FIntHashTrie := TIntegerHashTrie.Create(64);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   Check(FIntHashTrie.Find(Key, Value), 'Find should return True');
@@ -110,7 +110,7 @@ procedure TIntegerHashTrieTest.TestAddReplaceAndFind;
 var
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   FIntHashTrie.Add(Cardinal(1), Self);
   Check(FIntHashTrie.Find(Cardinal(1), Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
@@ -127,7 +127,7 @@ var
   i : Cardinal;
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   for i := 1 to 1024 do
     FIntHashTrie.Add(i, {%H-}Pointer(i));
   for i := 1 to 1024 do
@@ -141,7 +141,7 @@ procedure TIntegerHashTrieTest.TestAddZeroKey;
 var
   Value : Pointer;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   FIntHashTrie.Add(Cardinal(0), nil);
   Check(FIntHashTrie.Find(Cardinal(0), Value), 'Zero should be allowed');
 end;
@@ -153,7 +153,7 @@ var
   Value : pointer;
   It : THashTrieIterator;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs32);
+  FIntHashTrie := TIntegerHashTrie.Create(32);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   FIntHashTrie.InitIterator(It);
@@ -175,7 +175,7 @@ var
   Value : pointer;
   It : THashTrieIterator;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs16);
+  FIntHashTrie := TIntegerHashTrie.Create(16);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   FIntHashTrie.InitIterator(It);
@@ -197,7 +197,7 @@ var
   Value : pointer;
   It : THashTrieIterator;
 begin
-  FIntHashTrie := TIntegerHashTrie.Create(hs64);
+  FIntHashTrie := TIntegerHashTrie.Create(64);
   Key := 1;
   FIntHashTrie.Add(Key, Self);
   FIntHashTrie.InitIterator(It);

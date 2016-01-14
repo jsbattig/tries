@@ -115,12 +115,13 @@ begin
   Result:= (Value shr N) or (Value shl (32-N));
 end;
 
-function RoLQWord(Value: Int64; N: Integer): Int64; inline;
+(* The following two functions will blow up if inlined in Delphi 2007 *)
+function RoLQWord(Value: Int64; N: Integer): Int64; {$IFNDEF VER180} inline; {$ENDIF}
 begin
   Result:= (Value shl N) or (Value shr (64-N));
 end;
 
-function RoRQWord(Value: Int64; N: Integer): Int64; inline;
+function RoRQWord(Value: Int64; N: Integer): Int64; {$IFNDEF VER180} inline; {$ENDIF}
 begin
   Result:= (Value shr N) or (Value shl (64-N));
 end;

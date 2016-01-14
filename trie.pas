@@ -49,7 +49,7 @@ uses
   SysUtils, uAllocators, HashedContainer;
 
 const
-  MaxTrieDepth               = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
+  MaxTrieDepth = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
 
 type
   TTrieNodeArray = array[0..ChildrenPerBucket - 1] of PTrieBranchNode;
@@ -145,8 +145,7 @@ begin
   FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
-  if (ATrieDepth <> TrieDepth32Bits) and (ATrieDepth <> TrieDepth64Bits) and
-     (ATrieDepth <> TrieDepth16Bits) then
+  if (ATrieDepth < 4) or (ATrieDepth > 64) then
     RaiseTrieDepthError;
   FTrieDepth := ATrieDepth;
   FLastMidBranchNode := FTrieDepth - 3;
@@ -467,9 +466,9 @@ begin
     exit;
   end;
   case FTrieDepth of
-    TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 shr BitsForChildIndexPerBucket;
-    TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 shr BitsForChildIndexPerBucket;
-    TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 shr BitsForChildIndexPerBucket;
+    1..TrieDepth16Bits : AIterator.Base.LastResult16 := AIterator.Base.LastResult16 shr BitsForChildIndexPerBucket;
+    TrieDepth16Bits + 1..TrieDepth32Bits : AIterator.Base.LastResult32 := AIterator.Base.LastResult32 shr BitsForChildIndexPerBucket;
+    TrieDepth32Bits + 1..TrieDepth64Bits : AIterator.Base.LastResult64 := AIterator.Base.LastResult64 shr BitsForChildIndexPerBucket;
     else RaiseTrieDepthError;
   end;
   CleanLowBitsIteratorLastResult(AIterator, FTrieDepth);
@@ -561,11 +560,7 @@ end;
 
 function TTrie.TrieDepthToHashSize(ATrieDepth: Byte): Byte;
 begin
-  if ATrieDepth <= TrieDepth16Bits then
-    Result := sizeof(Word)
-  else if ATrieDepth <= TrieDepth32Bits then
-    Result := sizeof(Cardinal)
-  else Result := sizeof(Int64);
+  Result := ATrieDepth * BitsForChildIndexPerBucket;
 end;
 
 end.
