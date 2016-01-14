@@ -54,6 +54,7 @@ type
     procedure TestIterator;
     procedure TestAutoFreeValue;
     procedure TestAddTwoValuesAndIterate;
+    procedure TestAddAndFindManyEntriesFast;
     {$IFDEF UNICODE}
     procedure TestUnicodeChars;
     procedure TestAddAndTraverseUnicode;
@@ -388,6 +389,18 @@ procedure TStringHashTrieTest.TraverseMeth(UserData: Pointer; Key: PAnsiChar;
 begin
   CheckEquals('Hello World', {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrPas(Key), 'Item not found');
   Check(Data = TObject(Self), 'Item found doesn''t match expected value');
+end;
+
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesFast;
+const
+  Count = 1024 * 1024 * 1;
+var
+  i : integer;
+begin
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Find(AnsiString(IntToStr(i)) + 'hello');
 end;
 
 {$IFDEF UNICODE}

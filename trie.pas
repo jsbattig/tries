@@ -46,7 +46,7 @@ unit Trie;
 interface
 
 uses
-  SysUtils, uAllocators, HashedContainer;
+  SysUtils, trieAllocators, HashedContainer;
 
 const
   MaxTrieDepth = sizeof(Int64) * BitsPerByte div BitsForChildIndexPerBucket;
@@ -142,7 +142,7 @@ constructor TTrie.Create(ATrieDepth: Byte; ALeafSize: Cardinal = sizeof(
     TTrieLeafNode));
 begin
   inherited Create(TrieDepthToHashSize(ATrieDepth), ALeafSize);
-  FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TTrieBranchNode));
+  FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), _64KB div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
   if (ATrieDepth < 4) or (ATrieDepth > 64) then
@@ -175,7 +175,7 @@ begin
   else if Level = FLastMidBranchNode + 1 then
     FreeTrieLeafNodeArray(PTrieLeafNodeArray(PTrieBranchNode(ANode)^.Children), ANode^.ChildrenCount, Level + 1);
   if Level < FTrieDepth - 1 then
-    uAllocators.DeAlloc(ANode);
+    trieAllocators.DeAlloc(ANode);
 end;
 
 procedure TTrie.RaiseTrieDepthError;

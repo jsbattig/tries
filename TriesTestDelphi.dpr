@@ -25,9 +25,9 @@ uses
   stringhashtrie in 'stringhashtrie.pas',
   trie in 'trie.pas',
   xxhash in 'xxhash.pas',
-  uAllocators in 'uAllocators.pas',
   hashedcontainer in 'hashedcontainer.pas',
-  hash_table in 'hash_table.pas';
+  hash_table in 'hash_table.pas',
+  trieAllocators in 'trieAllocators.pas';
 
 {$R *.RES}
 
