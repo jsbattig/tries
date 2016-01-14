@@ -26,9 +26,12 @@ uses
   test_integerhashtrie in 'test_integerhashtrie.pas',
   test_stringhashtrie in 'test_stringhashtrie.pas',
   trie in 'trie.pas',
-  usuperfasthash in 'usuperfasthash.pas',
   test_pointertrie in 'test_pointertrie.pas',
-  test_old_stringhashtrie in 'test_old_stringhashtrie.pas';
+  test_old_stringhashtrie in 'test_old_stringhashtrie.pas',
+  uAllocators in 'uAllocators.pas',
+  hashedcontainer in 'hashedcontainer.pas',
+  hash_table in 'hash_table.pas',
+  xxhash in 'xxhash.pas';
 
 {$R *.RES}
 

@@ -9,6 +9,8 @@ unit uSuperFastHash;
 interface
 
 function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean): Cardinal;
+function CalcStrCRC32(S: Pointer; ASize: Cardinal): Cardinal;
+function CalcStrCRC32Upper(S: PAnsiChar): Cardinal;
 
 implementation
 
@@ -99,11 +101,59 @@ begin
   inc (Result, Result shr 6);
 end;
 
+{ dynamic crc32 table }
+
+const
+  CRC32_POLYNOMIAL = $EDB88320;
+var
+  Ccitt32Table: array[0..255] of Cardinal;
+
+function CalcStrCRC32Upper(S: PAnsiChar): Cardinal;
+begin
+  Result := $FFFFFFFF;
+  while s^ <> #0 do
+    begin
+      Result := (((Result shr 8) and $00FFFFFF) xor (Ccitt32Table[(Result xor byte(UpperArray [S^])) and $FF]));
+      inc (S);
+    end;
+end;
+
+procedure BuildCRCTable;
+var
+  i, j: longint;
+  value: Cardinal;
+begin
+  for i := 0 to 255 do
+    begin
+      value := i;
+      for j := 8 downto 1 do
+        if ((value and 1) <> 0) then
+          value := (value shr 1) xor CRC32_POLYNOMIAL
+        else
+          value := value shr 1;
+      Ccitt32Table[i] := value;
+    end
+end;
+
+function CalcStrCRC32(S: Pointer; ASize: Cardinal): Cardinal;
+var
+  i : Cardinal;
+begin
+  Result := $FFFFFFFF;
+  i := 0;
+  while i < ASize do
+    begin
+      Result := (((Result shr 8) and $00FFFFFF) xor (Ccitt32Table[(Result xor byte(PAnsiChar(s)[i])) and $FF]));
+      inc(i);
+    end;
+end;
+
 var
   c : AnsiChar;
 
 initialization
   for c := low (UpperArray) to high (UpperArray) do
     UpperArray [c] := UpCase(c);
+  BuildCRCTable;
 end.
 
