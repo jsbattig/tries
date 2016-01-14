@@ -32,26 +32,6 @@ const
   TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
 
-  ChildIndexShiftArray : array[TrieDepth16Bits..TrieDepth64Bits, 0..ChildrenPerBucket - 1] of Byte =
-    ((12, 8,   4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
-     (16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
-     (20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
-     (24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0),
-     (28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0,  0),
-     (32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0,  0),
-     (36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0,  0),
-     (40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0,  0),
-     (44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0,  0),
-     (48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0,  0),
-     (52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0,  0),
-     (56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0,  0),
-     (60, 56, 52, 48, 44, 40, 36, 32, 28, 24, 20, 16, 12,  8,  4,  0));
-  CleanChildIndexMask : array[0..ChildrenPerBucket - 1] of _Int64 =
-    ($FFFFFFFFFFFFFFF0, $FFFFFFFFFFFFFF0F, $FFFFFFFFFFFFF0FF, $FFFFFFFFFFFF0FFF,
-     $FFFFFFFFFFF0FFFF, $FFFFFFFFFF0FFFFF, $FFFFFFFFF0FFFFFF, $FFFFFFFF0FFFFFFF,
-     $FFFFFFF0FFFFFFFF, $FFFFFF0FFFFFFFFF, $FFFFF0FFFFFFFFFF, $FFFF0FFFFFFFFFFF,
-     $FFF0FFFFFFFFFFFF, $FF0FFFFFFFFFFFFF, $F0FFFFFFFFFFFFFF, $0FFFFFFFFFFFFFFF);
-
 type
   PTrieLeafNode = ^TTrieLeafNode;
   TTrieLeafNode = record
@@ -134,6 +114,11 @@ begin
     FOnFreeTrieNode(ANode, Level);
 end;
 
+function ChildIndexShift(HashSize, Level : Byte) : Byte; inline;
+begin
+  Result := (HashSize div BitsForChildIndexPerBucket - Level - 1) * BitsForChildIndexPerBucket;
+end;
+
 function THashedContainer.GetBitFieldIndex(const Data; Level: Byte): Byte;
 begin
   {$IFNDEF FPC}
@@ -141,11 +126,11 @@ begin
   {$ENDIF}
   case FHashSize of
     1..sizeof(Word) * BitsPerByte :
-      Result := (Word(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+      Result := (Word(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
     sizeof(Word) * BitsPerByte + 1..sizeof(Cardinal) * BitsPerByte :
-      Result := (Integer(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+      Result := (Integer(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
     sizeof(Cardinal) * BitsPerByte + 1..sizeof(Int64) * BitsPerByte :
-      Result := (Int64(Data) shr ChildIndexShiftArray[FHashSize div BitsForChildIndexPerBucket, Level]) and BucketMask;
+      Result := (Int64(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
     else RaiseHashSizeError;
   end;
 end;
@@ -191,10 +176,15 @@ begin
   else ANode^.Busy := ANode^.Busy and not (Word(1) shl BitFieldIndex);
 end;
 
+function CleanChildIndexMask(BitFieldIndex : Byte) : Int64; inline;
+begin
+  Result := Int64(-1) xor (Int64(BucketMask) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+end;
+
 procedure THashedContainer.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
     ChildIndex: Byte);
 begin
-  ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask[BitFieldIndex];
+  ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask(BitFieldIndex);
   ANode^.ChildIndex := ANode^.ChildIndex or (_Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
 end;
 
