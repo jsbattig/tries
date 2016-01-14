@@ -7,7 +7,7 @@ unit Hash_Trie;
 interface
 
 uses
-  Trie, hash_table, uAllocators, HashedContainer;
+  Trie, hash_table, trieAllocators, HashedContainer;
 
 type
   PKeyValuePair = ^TKeyValuePair;
@@ -129,8 +129,8 @@ begin
   else FContainer := TTrie.Create(FTrieDepth, sizeof(THashTrieNode));
   FContainer.OnFreeTrieNode := FreeTrieNode;
   FContainer.OnInitLeaf := InitLeaf;
-  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TKeyValuePairNode));
-  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), MAX_MEDIUM_BLOCK_SIZE div sizeof(TKeyValuePairBacktrackNode));
+  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _64KB div sizeof(TKeyValuePairNode));
+  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _64KB div sizeof(TKeyValuePairBacktrackNode));
 end;
 
 destructor THashTrie.Destroy;
@@ -310,7 +310,7 @@ begin
   begin
     TmpNode := Node;
     Node := Node^.Next;
-    uAllocators.DeAlloc(TmpNode);
+    trieAllocators.DeAlloc(TmpNode);
   end;
   AIterator.BackTrack := nil;
 end;
@@ -439,16 +439,16 @@ begin
             SmallestNodeParent^.Left := SmallestNode^.Right;
             Node^.KVP := SmallestNode^.KVP;
             Node^.Next := SmallestNode^.Next;
-            uAllocators.DeAlloc(SmallestNode);
+            trieAllocators.DeAlloc(SmallestNode);
           end
           else
           begin
             ParentNodePtr^ := Node^.Right;
             Node^.Right^.Left := Node^.Left;
-            uAllocators.DeAlloc(Node);
+            trieAllocators.DeAlloc(Node);
           end;
         end
-        else uAllocators.DeAlloc(Node);
+        else trieAllocators.DeAlloc(Node);
         Result := True;
         dec(FCount);
         exit;
@@ -566,11 +566,11 @@ var
     begin
       FreeKey(AIterator.BackTrack^.Node^.KVP.Key);
       FreeValue(AIterator.BackTrack^.Node^.KVP.Value);
-      uAllocators.DeAlloc(AIterator.BackTrack^.Node);
+      trieAllocators.DeAlloc(AIterator.BackTrack^.Node);
     end;
     BacktrackNode := AIterator.BackTrack;
     AIterator.BackTrack := BacktrackNode^.Next;
-    uAllocators.Dealloc(BacktrackNode);
+    trieAllocators.Dealloc(BacktrackNode);
   end;
 begin
   while AIterator.BackTrack <> nil do

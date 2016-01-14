@@ -36,7 +36,7 @@ type
         ASeed: _Int64; AHashSize: Byte); override;
     procedure FreeKey(key : Pointer); override;
   public
-    constructor Create(AHashSize: Byte = 32);
+    constructor Create(AHashSize: Byte = 20);
     function Add(key: Cardinal; Value: Pointer = nil): Boolean; overload;
     function Add(key: Word; Value: Pointer = nil): Boolean; overload;
     function Add(key: Int64; Value: Pointer = nil): Boolean; overload;
@@ -64,7 +64,7 @@ implementation
 
 { TIntegerHashTrie }
 
-constructor TIntegerHashTrie.Create(AHashSize: Byte = 32);
+constructor TIntegerHashTrie.Create(AHashSize: Byte = 20);
 begin
   inherited Create(AHashSize);
 end;

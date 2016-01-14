@@ -1,11 +1,15 @@
-unit uAllocators;
+unit trieAllocators;
 
 interface
 
 {$i DelphiVersion_defines.inc}
 
+{$IFDEF FPC}
+{$DEFINE PUREPASCAL}
+{$ENDIF}
+
 const
-  MAX_MEDIUM_BLOCK_SIZE = 256 * 1024;
+  _64KB = 64 * 1024;
   Aligner = sizeof (NativeUInt) - 1;
   MAGIC_NUMBER = $73737300;
 
@@ -118,6 +122,15 @@ end;
 
 function DeAlloc(Ptr: Pointer) : boolean;
 {$IfNDef MEMLEAKPROFILING}
+{$IFDEF PUREPASCAL}
+begin
+  Ptr := PPointer(NativeUInt(Ptr) - sizeof(TBlockHeader))^;
+  dec(PNativeUInt(Ptr)^);
+  if PNativeUInt(Ptr)^ > 0 then
+    exit(False);
+  _FreeMem(Ptr);
+  Result := True;
+{$ELSE}
 asm
   {$IFDEF WIN64}
   mov rcx, qword ptr [rcx - offset TBlock.Data + offset TBlock.Header.PagePointer] // Move to RAX pointer to start of block
@@ -140,6 +153,7 @@ asm
 @@Return:
   mov eax, False
   {$ENDIF}
+{$ENDIF}
 {$Else}
 begin
   FreeMem(Ptr);
@@ -186,7 +200,7 @@ end;
 
 procedure TFastHeap.DeAlloc(Ptr: Pointer);
 begin
-  if uAllocators.DeAlloc(Ptr) and assigned(FOnDeallocBlock) then
+  if trieAllocators.DeAlloc(Ptr) and assigned(FOnDeallocBlock) then
     FOnDeallocBlock(Ptr);
 end;
 

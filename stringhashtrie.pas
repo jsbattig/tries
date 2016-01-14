@@ -10,7 +10,7 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  uAllocators,
+  trieAllocators,
   HashedContainer
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
@@ -76,7 +76,7 @@ uses
 constructor TStringHashTrie.Create(AHashSize: Byte = 20);
 begin
   inherited Create(AHashSize);
-  FPAnsiCharAllocator := TVariableBlockHeap.Create(MAX_MEDIUM_BLOCK_SIZE);
+  FPAnsiCharAllocator := TVariableBlockHeap.Create(_64KB);
 end;
 
 destructor TStringHashTrie.Destroy;
@@ -108,8 +108,7 @@ end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer);
 begin
-  //{$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(key);
-  uAllocators.DeAlloc(key);
+  trieAllocators.DeAlloc(key);
 end;
 
 function TStringHashTrie.Add(const key: AnsiString; Value: Pointer = nil):

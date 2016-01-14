@@ -55,11 +55,10 @@
     <DCCReference Include="pointertrie_test.pas" />
     <DCCReference Include="stringhashtrie.pas" />
     <DCCReference Include="test_integerhashtrie.pas" />
-    <DCCReference Include="test_old_stringhashtrie.pas" />
     <DCCReference Include="test_pointertrie.pas" />
     <DCCReference Include="test_stringhashtrie.pas" />
     <DCCReference Include="trie.pas" />
-    <DCCReference Include="uAllocators.pas" />
+    <DCCReference Include="trieAllocators.pas" />
     <DCCReference Include="xxhash.pas" />
   </ItemGroup>
 </Project>

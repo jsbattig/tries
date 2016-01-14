@@ -3,7 +3,7 @@ unit hash_table;
 interface
 
 uses
-  HashedContainer, uAllocators;
+  HashedContainer, trieAllocators;
 
 const
   MAX_HASH_TABLE_INDEX = 65535;
@@ -60,7 +60,7 @@ begin
   GetMem(FHashTable, FHashTableMaxNodeCount * sizeof(PTrieLeafNode));
   for i := 0 to FHashTableMaxNodeCount - 1 do
     FHashTable[i] := nil;
-  FLeafNodesAllocator := TFixedBlockHeap.Create(LeafSize, MAX_MEDIUM_BLOCK_SIZE div LeafSize);
+  FLeafNodesAllocator := TFixedBlockHeap.Create(LeafSize, _64KB div LeafSize);
 end;
 
 destructor THashTable.Destroy;
@@ -129,7 +129,7 @@ end;
 procedure THashTable.FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
 begin
   inherited FreeTrieNode(ANode, Level);
-  uAllocators.DeAlloc(ANode);
+  trieAllocators.DeAlloc(ANode);
 end;
 
 function THashTable.GetObjectFromIterator(const _AIterator): Pointer;
