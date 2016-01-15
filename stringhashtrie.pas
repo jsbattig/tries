@@ -41,7 +41,7 @@ type
     function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; override;
     procedure FreeKey(key: Pointer; {%H-}KeySize: Cardinal); override;
   public
-    constructor Create(AHashSize: Byte = 20);
+    constructor Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Find(const key: AnsiString; out Value: Pointer): Boolean; overload;
     function Find(const key: AnsiString): Boolean; overload;
@@ -70,9 +70,9 @@ uses
 
 { TStringHashTrie }
 
-constructor TStringHashTrie.Create(AHashSize: Byte = 20);
+constructor TStringHashTrie.Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
 begin
-  inherited Create(AHashSize);
+  inherited Create(AHashSize, AUseHashTable);
   FPAnsiCharAllocator := TVariableBlockHeap.Create(_64KB);
 end;
 

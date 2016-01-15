@@ -25,7 +25,7 @@ type
   end;
   TBlock = record
     Header : TBlockHeader;
-    Data : array [0..MaxInt - sizeof(PPage) - sizeof(NativeUInt) - 16] of byte;
+    Data : array [0..MaxInt - sizeof(PPage) - sizeof(NativeUInt) - 20] of byte;
   end;
   TPageHeader = record
     RefCount : NativeUInt;

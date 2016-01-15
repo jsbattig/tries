@@ -99,7 +99,7 @@ type
     function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
     property TrieDepth: Byte read FTrieDepth;
   public
-    constructor Create(AHashSize: Byte);
+    constructor Create(AHashSize: Byte; AUseHashTable: Boolean);
     destructor Destroy; override;
     procedure Clear;
     procedure InitIterator(out AIterator : THashTrieIterator);
@@ -120,11 +120,11 @@ const
 
 { THashTrie }
 
-constructor THashTrie.Create(AHashSize: Byte);
+constructor THashTrie.Create(AHashSize: Byte; AUseHashTable: Boolean);
 begin
   FTrieDepth := HashSizeToTrieDepth(AHashSize);
   inherited Create(AHashSize, sizeof(THashTrieNode));
-  if AHashSize <= 20 then
+  if (AHashSize <= 20) and AUseHashTable then
     FContainer := THashTable.Create(AHashSize, sizeof(THashTrieNode))
   else FContainer := TTrie.Create(FTrieDepth, sizeof(THashTrieNode));
   FContainer.OnFreeTrieNode := {$IFDEF FPC}@{$ENDIF}FreeTrieNode;
