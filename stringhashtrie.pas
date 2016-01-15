@@ -40,9 +40,7 @@ type
     function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
         {%H-}KeySize2: Cardinal): Boolean; override;
     function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; override;
-    procedure FreeKey({%H-}key : Pointer); override;
-    function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64;
-        override;
+    procedure FreeKey(key: Pointer; KeySize: Cardinal); override;
   public
     constructor Create(AHashSize: Byte = 20);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
@@ -69,7 +67,7 @@ type
 implementation
 
 uses
-  xxHash;
+  uSuperFastHash;
 
 { TStringHashTrie }
 
@@ -95,18 +93,11 @@ end;
 
 function TStringHashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal):
     Cardinal;
-var
-  Upper : AnsiString;
 begin
-  if FCaseInsensitive then
-  begin
-    Upper := UpperCase(AnsiString(PAnsiChar(key)));
-    Result := Cardinal(xxHash32Calc(PAnsiChar(Upper), KeySize, ASeed));
-  end
-  else Result := Cardinal(xxHash32Calc(key, KeySize, ASeed));
+  Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
 end;
 
-procedure TStringHashTrie.FreeKey(key: Pointer);
+procedure TStringHashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
 begin
   trieAllocators.DeAlloc(key);
 end;
@@ -193,6 +184,7 @@ begin
   Result := Find(key, Dummy);
 end;
 
+(*
 function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed:
     _Int64): Int64;
 var
@@ -204,7 +196,7 @@ begin
     Result := Cardinal(xxHash64Calc(PAnsiChar(Upper), KeySize, ASeed));
   end
   else Result := Cardinal(xxHash64Calc(key, KeySize, ASeed));
-end;
+end; *)
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;
 begin

@@ -63,12 +63,12 @@ type
     FLeafSize : Cardinal;
   protected
     FCount: Integer;
-    function GetBitFieldIndex(const Data; Level : Byte): Byte;
+    function GetBitFieldIndex(const Data; Level : Byte): Byte; inline;
     function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte): Boolean; inline;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte): Byte; inline;
     procedure SetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte; Value : Boolean); inline;
-    procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte);
-    procedure InitLeaf(var Leaf);
+    procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); inline;
+    procedure InitLeaf(var Leaf); inline;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure RaiseHashSizeError; inline;
     property LeafSize : Cardinal read FLeafSize;
@@ -92,7 +92,6 @@ type
     function GetObjectFromIterator(const _AIterator): Pointer; virtual; abstract;
     procedure InitIterator(out _AIterator); virtual;
   end;
-
 
 implementation
 

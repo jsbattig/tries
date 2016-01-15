@@ -63,6 +63,7 @@ type
 
   { THashTrie }
 
+  EHashTrie = class(EHashedContainer);
   THashTrie = class(TBaseHashedContainer)
   private
     FContainer : THashedContainer;
@@ -80,14 +81,14 @@ type
     procedure NextLeafTreeNode(var AIterator: THashTrieIterator; AFreeNodes:
         Boolean = False);
   protected
-    procedure InitLeaf(var Leaf);
-    procedure FreeKey({%H-}key : Pointer); virtual;
+    procedure InitLeaf(var Leaf); inline;
+    procedure FreeKey(key: Pointer; KeySize: Cardinal); virtual;
     procedure FreeValue({%H-}value : Pointer); virtual;
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
-        ASeed: _Int64; AHashSize: Byte); virtual;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
+        AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); virtual;
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
     function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64; virtual;
@@ -111,7 +112,7 @@ type
 implementation
 
 uses
-  xxHash, SysUtils;
+  SysUtils, uSuperFastHash;
 
 const
   TRIE_HASH_SEED = $FEA0945B;
@@ -152,17 +153,21 @@ end;
 
 function THashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal;
 begin
-  Result := Cardinal(xxHash32Calc(key, KeySize, ASeed));
+  Result := SuperFastHash(key, KeySize, False);
 end;
 
 function THashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64):
     Int64;
+var
+  AHash32_1, AHash32_2 : Cardinal;
 begin
-  Result := xxHash64Calc(key, KeySize, ASeed);
+  AHash32_1 := Hash32(PAnsiChar(key), KeySize div 2, ASeed);
+  AHash32_2 := Hash32(@PAnsiChar(key)[KeySize div 2], KeySize - (KeySize div 2), ASeed);
+  Result := Int64(AHash32_1) + Int64(AHash32_2) shl 32;
 end;
 
-procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize:
-    Cardinal; ASeed: _Int64; AHashSize: Byte);
+procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
+    AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
 begin
   case AHashSize of
     1..16  : Hash.Hash16 := Hash16(key, KeySize, ASeed);
@@ -178,7 +183,7 @@ begin
   THashTrieNode(Leaf).ChildIndex := 0;
 end;
 
-procedure THashTrie.FreeKey(key: Pointer);
+procedure THashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
 begin
 end;
 
@@ -223,13 +228,13 @@ var
 begin
   if HashSize * 2 > 64 then
   begin
-    CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED, HashSize);
-    CalcHash(TreeHash, kvp.Key, kvp.KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(Hash, kvp.Key, kvp.KeySize, kvp.KeySize, TRIE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, kvp.Key, kvp.KeySize div 2, kvp.KeySize, TREE_HASH_SEED, HashSize);
     kvp.Hash := TreeHash.Hash16;
   end
   else
   begin
-    CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(Hash, kvp.Key, kvp.KeySize, kvp.KeySize, TRIE_HASH_SEED, 64);
     kvp.Hash := Hash.Hash16_3;
   end;
   FContainer.Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
@@ -327,12 +332,12 @@ var
 begin
   if HashSize * 2 > 64 then
   begin
-    CalcHash(Hash, key, KeySize, TRIE_HASH_SEED, HashSize);
-    CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(Hash, key, KeySize, KeySize, TRIE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, key, KeySize div 2, KeySize, TREE_HASH_SEED, HashSize);
   end
   else
   begin
-    CalcHash(Hash, key, KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(Hash, key, KeySize, KeySize, TRIE_HASH_SEED, 64);
     TreeHash.Hash16 := Hash.Hash16_3;
   end;
   if FContainer.Find(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
@@ -394,12 +399,12 @@ begin
   Node := PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex];
   if HashSize * 2 > 64 then
   begin
-    CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, key, KeySize div 2, KeySize, TREE_HASH_SEED, HashSize);
     Hash := TreeHash.Hash16;
   end
   else
   begin
-    CalcHash(TreeHash, key, KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(TreeHash, key, KeySize, KeySize, TRIE_HASH_SEED, 64);
     Hash := TreeHash.Hash16_3;
   end;
   while Node <> nil do
@@ -422,7 +427,7 @@ begin
           Node^.Next^.Left := Node^.Left;
           Node^.Next^.Right := Node^.Right;
         end;
-        FreeKey(Node^.KVP.Key);
+        FreeKey(Node^.KVP.Key, Node^.KVP.KeySize);
         FreeValue(Node^.KVP.Value);
         if SmallestNode <> nil then
         begin
@@ -553,11 +558,14 @@ procedure THashTrie.NextLeafTreeNode(var AIterator: THashTrieIterator;
 var
   BacktrackNode : PKeyValuePairBacktrackNode;
   procedure MoveUp;
+  var
+    kvp : PKeyValuePair;
   begin
     if AFreeNodes then
     begin
-      FreeKey(AIterator.BackTrack^.Node^.KVP.Key);
-      FreeValue(AIterator.BackTrack^.Node^.KVP.Value);
+      kvp := @AIterator.BackTrack^.Node^.KVP;
+      FreeKey(kvp^.Key, kvp^.KeySize);
+      FreeValue(kvp^.Value);
       trieAllocators.DeAlloc(AIterator.BackTrack^.Node);
     end;
     BacktrackNode := AIterator.BackTrack;

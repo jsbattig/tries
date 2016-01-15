@@ -4,6 +4,7 @@ interface
 
 {$i DelphiVersion_defines.inc}
 
+{.$DEFINE MEMLEAKPROFILING}
 {$IFDEF FPC}
 {$DEFINE PUREPASCAL}
 {$ENDIF}
