@@ -1,15 +1,11 @@
-unit trieAllocators;
+unit uAllocators;
 
 interface
 
 {$i DelphiVersion_defines.inc}
 
-{$IFDEF FPC}
-{$DEFINE PUREPASCAL}
-{$ENDIF}
-
 const
-  _64KB = 64 * 1024;
+  MAX_MEDIUM_BLOCK_SIZE = 256 * 1024;
   Aligner = sizeof (NativeUInt) - 1;
   MAGIC_NUMBER = $73737300;
 
@@ -122,15 +118,6 @@ end;
 
 function DeAlloc(Ptr: Pointer) : boolean;
 {$IfNDef MEMLEAKPROFILING}
-{$IFDEF PUREPASCAL}
-begin
-  Ptr := {%H-}PPointer({%H-}NativeUInt(Ptr) - sizeof(TBlockHeader))^;
-  dec(PNativeUInt(Ptr)^);
-  if PNativeUInt(Ptr)^ > 0 then
-    exit(False);
-  _FreeMem(Ptr);
-  Result := True;
-{$ELSE}
 asm
   {$IFDEF WIN64}
   mov rcx, qword ptr [rcx - offset TBlock.Data + offset TBlock.Header.PagePointer] // Move to RAX pointer to start of block
@@ -153,7 +140,6 @@ asm
 @@Return:
   mov eax, False
   {$ENDIF}
-{$ENDIF}
 {$Else}
 begin
   FreeMem(Ptr);
@@ -164,21 +150,21 @@ end;
 
 function AllocBlockInPage(APage: Pointer; AOffset: NativeUInt): Pointer; inline;
 begin
-  Result := {%H-}Pointer ({%H-}NativeUInt(APage) + AOffset);
-  PBlock(Result)^.Header.PagePointer := APage;
+  Result := Pointer (NativeUInt(APage) + AOffset);
+  PBlock(Result).Header.PagePointer := APage;
   {$IFDef OVERALLOC}
   PBlock(Result).Header.MagicNumber := MAGIC_NUMBER;
   {$ENDIF}
-  inc (PPage(APage)^.Header.RefCount);
-  Result := @PBlock(Result)^.Data;
+  inc (PPage(APage).Header.RefCount);
+  Result := @PBlock(Result).Data;
 end;
 
 destructor TFastHeap.Destroy;
 begin
   if FStartBlockArray <> nil then
     begin
-      dec (PPage(FStartBlockArray)^.Header.RefCount);
-      if PPage(FStartBlockArray)^.Header.RefCount <= 0
+      dec (PPage(FStartBlockArray).Header.RefCount);
+      if PPage(FStartBlockArray).Header.RefCount <= 0
         then DeallocateMemory(FStartBlockArray);
     end;
   inherited;
@@ -186,21 +172,21 @@ end;
 
 procedure TFastHeap.AllocNewBlockArray;
 begin
-  if (FStartBlockArray <> nil) and (PPage(FStartBlockArray)^.Header.RefCount = 1)
+  if (FStartBlockArray <> nil) and (PPage(FStartBlockArray).Header.RefCount = 1)
     then FNextOffset := sizeof (TPageHeader)
     else
     begin
       if FStartBlockArray <> nil
-        then dec (PPage(FStartBlockArray)^.Header.RefCount);
+        then dec (PPage(FStartBlockArray).Header.RefCount);
       AllocateMemory(FStartBlockArray, FPageSize);
-      PPage(FStartBlockArray)^.Header.RefCount := 1;
+      PPage(FStartBlockArray).Header.RefCount := 1;
       FNextOffset := sizeof (TPageHeader);
     end;
 end;
 
 procedure TFastHeap.DeAlloc(Ptr: Pointer);
 begin
-  if trieAllocators.DeAlloc(Ptr) and assigned(FOnDeallocBlock) then
+  if uAllocators.DeAlloc(Ptr) and assigned(FOnDeallocBlock) then
     FOnDeallocBlock(Ptr);
 end;
 
@@ -220,7 +206,7 @@ end;
 
 function TFastHeap.GetCurrentBlockRefCount: Integer;
 begin
-  Result := PPage(FStartBlockArray)^.Header.RefCount;
+  Result := PPage(FStartBlockArray).Header.RefCount;
 end;
 
 { TFixedBlockHeap }
@@ -277,7 +263,7 @@ begin
     else
     begin
       AllocateMemory(Result, sizeof(TPageHeader) + ASize);
-      PPage(Result)^.Header.RefCount := 0;
+      PPage(Result).Header.RefCount := 0;
       Result := AllocBlockInPage(PPage(Result), sizeof(TPageHeader));
     end;
   {$Else}

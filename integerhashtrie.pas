@@ -40,12 +40,12 @@ type
     function Add(key: Cardinal; Value: Pointer = nil): Boolean; overload;
     function Add(key: Word; Value: Pointer = nil): Boolean; overload;
     function Add(key: Int64; Value: Pointer = nil): Boolean; overload;
-    function Find(key : Cardinal; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Word; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Int64; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Cardinal): Boolean; reintroduce; overload;
-    function Find(key : Word): Boolean; reintroduce; overload;
-    function Find(key : Int64): Boolean; reintroduce; overload; 
+    function Find(key : Cardinal; out Value : Pointer) : Boolean; overload;
+    function Find(key : Word; out Value : Pointer) : Boolean; overload;
+    function Find(key : Int64; out Value : Pointer) : Boolean; overload;
+    function Find(key : Cardinal): Boolean; overload;
+    function Find(key : Word): Boolean; overload;
+    function Find(key : Int64): Boolean; overload;
     function Remove(key : Cardinal) : Boolean; overload;
     function Remove(key : Word) : Boolean; overload;
     function Remove(key : Int64) : Boolean; overload;

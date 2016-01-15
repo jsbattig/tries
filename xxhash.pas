@@ -132,10 +132,10 @@ function xxHash32Calc(ABuffer: Pointer; ALength: LongInt; ASeed: LongWord = 0): 
 var v1, v2, v3, v4: LongWord;
     pLimit, pEnd: Pointer;
 begin
-  pEnd := Pointer(NativeInt(ABuffer) + ALength);
+  pEnd := {%H-}Pointer({%H-}NativeInt(ABuffer) + ALength);
   if ALength >= 16 then
     begin
-      pLimit := Pointer(NativeInt(pEnd) - 16);
+      pLimit := {%H-}Pointer({%H-}NativeInt(pEnd) - 16);
       v1 := ASeed + cPrime32x1 + cPrime32x2;
       v2 := ASeed + cPrime32x2;
       v3 := ASeed;
@@ -143,11 +143,11 @@ begin
 
       repeat
         v1 := cPrime32x1 * RolDWord(v1 + cPrime32x2 * PLongWord(ABuffer)^, 13);
-        v2 := cPrime32x1 * RolDWord(v2 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+4)^, 13);
-        v3 := cPrime32x1 * RolDWord(v3 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+8)^, 13);
-        v4 := cPrime32x1 * RolDWord(v4 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+12)^, 13);
-        inc(NativeUInt(ABuffer), 16);
-      until not (NativeUInt(ABuffer) <= NativeUInt(pLimit));
+        v2 := cPrime32x1 * RolDWord(v2 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+4)^, 13);
+        v3 := cPrime32x1 * RolDWord(v3 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+8)^, 13);
+        v4 := cPrime32x1 * RolDWord(v4 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+12)^, 13);
+        inc({%H-}NativeUInt(ABuffer), 16);
+      until not ({%H-}NativeUInt(ABuffer) <= {%H-}NativeUInt(pLimit));
 
       Result := RolDWord(v1, 1) + RolDWord(v2, 7) + RolDWord(v3, 12) + RolDWord(v4, 18);
     end else
@@ -155,18 +155,18 @@ begin
 
   inc(Result, ALength);
 
-  while NativeUInt(ABuffer) <= (NativeUInt(pEnd) - 4) do
+  while {%H-}NativeUInt(ABuffer) <= ({%H-}NativeUInt(pEnd) - 4) do
     begin
       Result := Result + PLongWord(ABuffer)^ * cPrime32x3;
       Result := RolDWord(Result, 17) * cPrime32x4;
-      inc(NativeUInt(ABuffer), 4);
+      inc({%H-}NativeUInt(ABuffer), 4);
     end;
 
-  while NativeUInt(ABuffer) < NativeUInt(pEnd) do
+  while {%H-}NativeUInt(ABuffer) < {%H-}NativeUInt(pEnd) do
     begin
       Result := Result + PByte(ABuffer)^ * cPrime32x5;
       Result := RolDWord(Result, 11) * cPrime32x1;
-      inc(NativeUInt(ABuffer));
+      inc({%H-}NativeUInt(ABuffer));
     end;
 
   Result := Result xor (Result shr 15);
@@ -191,7 +191,7 @@ function xxHash64Calc(ABuffer: Pointer; ALength: Cardinal; ASeed: QWord = 0):
 var v1, v2, v3, v4: QWord;
     pLimit, pEnd: Pointer;
 begin
-  pEnd := Pointer(NativeUInt(ABuffer) + ALength);
+  pEnd := {%H-}Pointer({%H-}NativeUInt(ABuffer) + ALength);
 
   if ALength >= 32 then
     begin
@@ -200,14 +200,14 @@ begin
       v3 := ASeed;
       v4 := ASeed - cPrime64x1;
 
-      pLimit := Pointer(NativeUInt(pEnd) - 32);
+      pLimit := {%H-}Pointer({%H-}NativeUInt(pEnd) - 32);
       repeat
         v1 := cPrime64x1 * RolQWord(v1 + cPrime64x2 * PQWord(ABuffer)^, 31);
-        v2 := cPrime64x1 * RolQWord(v2 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+8)^, 31);
-        v3 := cPrime64x1 * RolQWord(v3 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+16)^, 31);
-        v4 := cPrime64x1 * RolQWord(v4 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+24)^, 31);
-        inc(NativeUInt(ABuffer), 32);
-      until not (NativeUInt(ABuffer) <= NativeUInt(pLimit));
+        v2 := cPrime64x1 * RolQWord(v2 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+8)^, 31);
+        v3 := cPrime64x1 * RolQWord(v3 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+16)^, 31);
+        v4 := cPrime64x1 * RolQWord(v4 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+24)^, 31);
+        inc({%H-}NativeUInt(ABuffer), 32);
+      until not ({%H-}NativeUInt(ABuffer) <= {%H-}NativeUInt(pLimit));
 
       Result := RolQWord(v1, 1) + RolQWord(v2, 7) + RolQWord(v3, 12) + RolQWord(v4, 18);
 
@@ -227,25 +227,25 @@ begin
 
   inc(Result, ALength);
 
-  while NativeUInt(ABuffer) <= (NativeUInt(pEnd) - 8) do
+  while {%H-}NativeUInt(ABuffer) <= ({%H-}NativeUInt(pEnd) - 8) do
     begin
       Result := Result xor (cPrime64x1 * RolQWord(cPrime64x2 * PQWord(ABuffer)^, 31));
     	Result := RolQWord(Result, 27) * cPrime64x1 + cPrime64x4;
-    	inc(NativeUInt(ABuffer), 8);
+    	inc({%H-}NativeUInt(ABuffer), 8);
     end;
 
-  if NativeUInt(ABuffer) <= (NativeUInt(pEnd) - 4) then
+  if {%H-}NativeUInt(ABuffer) <= ({%H-}NativeUInt(pEnd) - 4) then
     begin
     	Result := (Result xor PLongWord(ABuffer)^) * cPrime64x1;
       Result := RolQWord(Result, 23) * cPrime64x2 + cPrime64x3;
-      inc(NativeUInt(ABuffer), 4);
+      inc({%H-}NativeUInt(ABuffer), 4);
     end;
 
-  while NativeUInt(ABuffer) < NativeUInt(pEnd) do
+  while {%H-}NativeUInt(ABuffer) < {%H-}NativeUInt(pEnd) do
     begin
       Result := Result xor (PByte(ABuffer)^ * cPrime64x5);
       Result := RolQWord(Result, 11) * cPrime64x1;
-      inc(NativeUInt(ABuffer));
+      inc({%H-}NativeUInt(ABuffer));
     end;
 
   Result := Result xor (Result shr 33);
@@ -289,19 +289,19 @@ begin
   inc(Result, FTotalLength);
 
   pBuffer := FBuffer;
-  pEnd := Pointer(NativeUInt(pBuffer) + FMemSize);
-  while NativeUInt(pBuffer) <= (NativeUInt(pEnd) - 4) do
+  pEnd := {%H-}Pointer({%H-}NativeUInt(pBuffer) + FMemSize);
+  while {%H-}NativeUInt(pBuffer) <= ({%H-}NativeUInt(pEnd) - 4) do
     begin
       Result := Result + PLongWord(pBuffer)^ * cPrime32x3;
       Result := RolDWord(Result, 17) * cPrime32x4;
-      inc(NativeUInt(pBuffer), 4);
+      inc({%H-}NativeUInt(pBuffer), 4);
     end;
 
-  while NativeUInt(pBuffer) < NativeUInt(pEnd) do
+  while {%H-}NativeUInt(pBuffer) < {%H-}NativeUInt(pEnd) do
     begin
       Result := Result + PByte(pBuffer)^ * cPrime32x5;
       Result := RolDWord(Result, 11) * cPrime32x1;
-      inc(NativeUInt(pBuffer));
+      inc({%H-}NativeUInt(pBuffer));
     end;
 
   Result := Result xor (Result shr 15);
@@ -329,44 +329,44 @@ begin
 
   if (FMemSize + ALength) < 16 then  { not enough data, store them to the next Update }
     begin
-      pHelp := Pointer(NativeUInt(FBuffer) + FMemSize);
+      pHelp := {%H-}Pointer({%H-}NativeUInt(FBuffer) + FMemSize);
       Move(ABuffer^, pHelp^, ALength);
       FMemSize := FMemSize + ALength;
       Result := True;
       Exit;  { Exit! }
     end;
 
-  pEnd := Pointer(NativeUInt(ABuffer) + ALength);
+  pEnd := {%H-}Pointer({%H-}NativeUInt(ABuffer) + ALength);
 
   if FMemSize > 0 then  { some data left from the previous Update }
     begin
-      pHelp := Pointer(NativeUInt(FBuffer) + FMemSize);
+      pHelp := {%H-}Pointer({%H-}NativeUInt(FBuffer) + FMemSize);
       Move(ABuffer^, pHelp^, 16 - FMemSize);
 
       FV1 := cPrime32x1 * RolDWord(FV1 + cPrime32x2 * PLongWord(FBuffer)^, 13);
-      FV2 := cPrime32x1 * RolDWord(FV2 + cPrime32x2 * PLongWord(NativeUInt(FBuffer) + 4)^, 13);
-      FV3 := cPrime32x1 * RolDWord(FV3 + cPrime32x2 * PLongWord(NativeUInt(FBuffer) + 8)^, 13);
-      FV4 := cPrime32x1 * RolDWord(FV4 + cPrime32x2 * PLongWord(NativeUInt(FBuffer) + 12)^, 13);
+      FV2 := cPrime32x1 * RolDWord(FV2 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(FBuffer) + 4)^, 13);
+      FV3 := cPrime32x1 * RolDWord(FV3 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(FBuffer) + 8)^, 13);
+      FV4 := cPrime32x1 * RolDWord(FV4 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(FBuffer) + 12)^, 13);
 
-      ABuffer := Pointer(NativeUInt(ABuffer) + (16 - FMemSize));
+      ABuffer := {%H-}Pointer({%H-}NativeUInt(ABuffer) + (16 - FMemSize));
       FMemSize := 0;
     end;
 
-  if NativeUInt(ABuffer) <= (NativeUInt(pEnd) - 16) then
+  if {%H-}NativeUInt(ABuffer) <= ({%H-}NativeUInt(pEnd) - 16) then
     begin
       v1 := FV1;
       v2 := FV2;
       v3 := FV3;
       v4 := FV4;
 
-      pLimit := Pointer(NativeUInt(pEnd) - 16);
+      pLimit := {%H-}Pointer({%H-}NativeUInt(pEnd) - 16);
       repeat
         v1 := cPrime32x1 * RolDWord(v1 + cPrime32x2 * PLongWord(ABuffer)^, 13);
-        v2 := cPrime32x1 * RolDWord(v2 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+4)^, 13);
-        v3 := cPrime32x1 * RolDWord(v3 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+8)^, 13);
-        v4 := cPrime32x1 * RolDWord(v4 + cPrime32x2 * PLongWord(NativeUInt(ABuffer)+12)^, 13);
-        inc(NativeUInt(ABuffer), 16);
-      until not (NativeUInt(ABuffer) <= NativeUInt(pLimit));
+        v2 := cPrime32x1 * RolDWord(v2 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+4)^, 13);
+        v3 := cPrime32x1 * RolDWord(v3 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+8)^, 13);
+        v4 := cPrime32x1 * RolDWord(v4 + cPrime32x2 * {%H-}PLongWord({%H-}NativeUInt(ABuffer)+12)^, 13);
+        inc({%H-}NativeUInt(ABuffer), 16);
+      until not ({%H-}NativeUInt(ABuffer) <= {%H-}NativeUInt(pLimit));
 
       FV1 := v1;
       FV2 := v2;
@@ -374,11 +374,11 @@ begin
       FV4 := v4;
     end;
 
-  if NativeUInt(ABuffer) < NativeUInt(pEnd) then  { store remaining data to the next Update or to Digest }
+  if {%H-}NativeUInt(ABuffer) < {%H-}NativeUInt(pEnd) then  { store remaining data to the next Update or to Digest }
     begin
       pHelp := FBuffer;
-      Move(ABuffer^, pHelp^, NativeUInt(pEnd) - NativeUInt(ABuffer));
-      FMemSize := NativeUInt(pEnd) - NativeUInt(ABuffer);
+      Move(ABuffer^, pHelp^, {%H-}NativeUInt(pEnd) - {%H-}NativeUInt(ABuffer));
+      FMemSize := {%H-}NativeUInt(pEnd) - {%H-}NativeUInt(ABuffer);
     end;
 
   Result := True;
@@ -429,26 +429,26 @@ begin
   Result := Result + FTotalLength;
 
   pBuffer := FBuffer;
-  pEnd := Pointer(NativeUInt(pBuffer) + FMemSize);
-  while NativeUInt(pBuffer) <= (NativeUInt(pEnd) - 8) do
+  pEnd := {%H-}Pointer({%H-}NativeUInt(pBuffer) + FMemSize);
+  while {%H-}NativeUInt(pBuffer) <= ({%H-}NativeUInt(pEnd) - 8) do
     begin
       Result := Result xor (cPrime64x1 * RolQWord(cPrime64x2 * PQWord(pBuffer)^, 31));
     	Result := RolQWord(Result, 27) * cPrime64x1 + cPrime64x4;
-    	inc(NativeUInt(pBuffer), 8);
+    	inc({%H-}NativeUInt(pBuffer), 8);
     end;
 
-  if NativeUInt(pBuffer) <= (NativeUInt(pEnd) - 4) then
+  if {%H-}NativeUInt(pBuffer) <= ({%H-}NativeUInt(pEnd) - 4) then
     begin
       Result := (Result xor PLongWord(pBuffer)^) * cPrime64x1;
       Result := RolQWord(Result, 23) * cPrime64x2 + cPrime64x3;
-      inc(NativeUInt(pBuffer), 4);
+      inc({%H-}NativeUInt(pBuffer), 4);
     end;
 
-  while NativeUInt(pBuffer) < NativeUInt(pEnd) do
+  while {%H-}NativeUInt(pBuffer) < {%H-}NativeUInt(pEnd) do
     begin
       Result := (Result xor PByte(pBuffer)^) * cPrime64x5;
       Result := RolQWord(Result, 11) * cPrime64x1;
-      inc(NativeUInt(pBuffer));
+      inc({%H-}NativeUInt(pBuffer));
     end;
 
   Result := Result xor (Result shr 33);
@@ -475,44 +475,44 @@ begin
   FTotalLength := FTotalLength + ALength;
   if (FMemSize + ALength) < 32 then  { not enough data, store them to the next Update }
     begin
-      pHelp := Pointer(NativeUInt(FBuffer) + FMemSize);
+      pHelp := {%H-}Pointer({%H-}NativeUInt(FBuffer) + FMemSize);
       Move(ABuffer^, pHelp^, ALength);
       FMemSize := FMemSize + ALength;
       Result := True;
       Exit;  { Exit! }
     end;
 
-  pEnd := Pointer(NativeUInt(ABuffer) + ALength);
+  pEnd := {%H-}Pointer({%H-}NativeUInt(ABuffer) + ALength);
 
   if FMemSize > 0 then  { some data left from the previous Update }
     begin
-      pHelp := Pointer(NativeUInt(FBuffer) + FMemSize);
+      pHelp := {%H-}Pointer({%H-}NativeUInt(FBuffer) + FMemSize);
       Move(FBuffer^, pHelp^, 32 - FMemSize);
 
       FV1 := cPrime64x1 * RolQWord(FV1 + cPrime64x2 * PQWord(FBuffer)^, 31);
-      FV2 := cPrime64x1 * RolQWord(FV2 + cPrime64x2 * PQWord(NativeUInt(FBuffer)+8)^, 31);
-      FV3 := cPrime64x1 * RolQWord(FV3 + cPrime64x2 * PQWord(NativeUInt(FBuffer)+16)^, 31);
-      FV4 := cPrime64x1 * RolQWord(FV4 + cPrime64x2 * PQWord(NativeUInt(FBuffer)+24)^, 31);
+      FV2 := cPrime64x1 * RolQWord(FV2 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(FBuffer)+8)^, 31);
+      FV3 := cPrime64x1 * RolQWord(FV3 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(FBuffer)+16)^, 31);
+      FV4 := cPrime64x1 * RolQWord(FV4 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(FBuffer)+24)^, 31);
 
-      ABuffer := Pointer(NativeUInt(ABuffer) + (32 - FMemSize));
+      ABuffer := {%H-}Pointer({%H-}NativeUInt(ABuffer) + (32 - FMemSize));
       FMemSize := 0;
     end;
 
-  if NativeUInt(ABuffer) <= (NativeUInt(pEnd) - 32) then
+  if {%H-}NativeUInt(ABuffer) <= ({%H-}NativeUInt(pEnd) - 32) then
     begin
       v1 := FV1;
       v2 := FV2;
       v3 := FV3;
       v4 := FV4;
 
-      pLimit := Pointer(NativeUInt(pEnd) - 32);
+      pLimit := {%H-}Pointer({%H-}NativeUInt(pEnd) - 32);
       repeat
         v1 := cPrime64x1 * RolQWord(v1 + cPrime64x2 * PQWord(ABuffer)^, 31);
-        v2 := cPrime64x1 * RolQWord(v2 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+8)^, 31);
-        v3 := cPrime64x1 * RolQWord(v3 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+16)^, 31);
-        v4 := cPrime64x1 * RolQWord(v4 + cPrime64x2 * PQWord(NativeUInt(ABuffer)+24)^, 31);
-        inc(NativeUInt(ABuffer), 32);
-      until not (NativeUInt(ABuffer) <= NativeUInt(pLimit));
+        v2 := cPrime64x1 * RolQWord(v2 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+8)^, 31);
+        v3 := cPrime64x1 * RolQWord(v3 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+16)^, 31);
+        v4 := cPrime64x1 * RolQWord(v4 + cPrime64x2 * {%H-}PQWord({%H-}NativeUInt(ABuffer)+24)^, 31);
+        inc({%H-}NativeUInt(ABuffer), 32);
+      until not ({%H-}NativeUInt(ABuffer) <= {%H-}NativeUInt(pLimit));
 
       FV1 := v1;
       FV2 := v2;
@@ -520,15 +520,15 @@ begin
       FV4 := v4;
     end;
 
-  if NativeUInt(ABuffer) < NativeUInt(pEnd) then  { store remaining data to the next Update or to Digest }
+  if {%H-}NativeUInt(ABuffer) < {%H-}NativeUInt(pEnd) then  { store remaining data to the next Update or to Digest }
     begin
       pHelp := FBuffer;
-      Move(ABuffer^, pHelp^, NativeUInt(pEnd) - NativeUInt(ABuffer));
-      FMemSize := NativeUInt(pEnd) - NativeUInt(ABuffer);
+      Move(ABuffer^, pHelp^, {%H-}NativeUInt(pEnd) - {%H-}NativeUInt(ABuffer));
+      FMemSize := {%H-}NativeUInt(pEnd) - {%H-}NativeUInt(ABuffer);
     end;
 
   Result := True;
 end;
 
 end.
-
+

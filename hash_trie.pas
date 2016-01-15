@@ -63,7 +63,7 @@ type
 
   { THashTrie }
 
-  THashTrie = class(THashedContainer)
+  THashTrie = class(TBaseHashedContainer)
   private
     FContainer : THashedContainer;
     FAutoFreeValue : Boolean;
@@ -91,20 +91,19 @@ type
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
     function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64; virtual;
-    function Add(var kvp: TKeyValuePair): Boolean; reintroduce;
+    function Add(var kvp: TKeyValuePair): Boolean;
     function InternalFind(key: Pointer; KeySize: Cardinal; out HashTrieNode:
-                          PHashTrieNode; out AChildIndex: Byte): PKeyValuePair; reintroduce;
-    function Remove(key: Pointer; KeySize: Cardinal): Boolean; reintroduce;
-    function Next(var AIterator : THashTrieIterator) : PKeyValuePair; reintroduce;
+                          PHashTrieNode; out AChildIndex: Byte): PKeyValuePair;
+    function Remove(key: Pointer; KeySize: Cardinal): Boolean;
+    function Next(var AIterator : THashTrieIterator) : PKeyValuePair;
     property TrieDepth: Byte read FTrieDepth;
   public
     constructor Create(AHashSize: Byte);
     destructor Destroy; override;
-    procedure Clear; override;
-    procedure InitIterator(out AIterator : THashTrieIterator); reintroduce;
+    procedure Clear;
+    procedure InitIterator(out AIterator : THashTrieIterator);
     procedure DoneIterator(var AIterator : THashTrieIterator);
-    function GetObjectFromIterator(const _AIterator): Pointer; override;
-    procedure Pack; override;
+    procedure Pack;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
@@ -127,8 +126,8 @@ begin
   if AHashSize <= 20 then
     FContainer := THashTable.Create(AHashSize, sizeof(THashTrieNode))
   else FContainer := TTrie.Create(FTrieDepth, sizeof(THashTrieNode));
-  FContainer.OnFreeTrieNode := FreeTrieNode;
-  FContainer.OnInitLeaf := InitLeaf;
+  FContainer.OnFreeTrieNode := {$IFDEF FPC}@{$ENDIF}FreeTrieNode;
+  FContainer.OnInitLeaf := {$IFDEF FPC}@{$ENDIF}InitLeaf;
   FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _64KB div sizeof(TKeyValuePairNode));
   FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _64KB div sizeof(TKeyValuePairBacktrackNode));
 end;
@@ -313,13 +312,6 @@ begin
     trieAllocators.DeAlloc(TmpNode);
   end;
   AIterator.BackTrack := nil;
-end;
-
-function THashTrie.GetObjectFromIterator(const _AIterator): Pointer;
-var
-  AIterator : THashTrieIterator absolute _AIterator;
-begin
-  Result := AIterator.Base.LastResultPtr;
 end;
 
 function THashTrie.HashSizeToTrieDepth(AHashSize: Byte): Byte;

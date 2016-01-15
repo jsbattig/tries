@@ -55,7 +55,7 @@ type
       -TrieDepthPointerSize : (LastResultPtr : Pointer;);
   end;
 
-  THashedContainer = class
+  TBaseHashedContainer = class
   private
     FHashSize: Byte;
     FOnFreeTrieNode : TFreeTrieNodeEvent;
@@ -75,40 +75,37 @@ type
     property HashSize : Byte read FHashSize;
   public
     constructor Create(AHashSize: Byte; ALeafSize: Cardinal);
-    procedure Clear; virtual; abstract;
-    procedure Pack; virtual; abstract;
-    procedure InitIterator(out _AIterator); virtual;
-    function Next(var _AIterator; ADepth: Byte = 0): Boolean; virtual; abstract;
-    function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; virtual; abstract;
-    procedure Remove(const Data); virtual; abstract;
-    function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte; LeafHasChildIndex: Boolean): Boolean; virtual; abstract;
-    function GetObjectFromIterator(const _AIterator): Pointer; virtual; abstract;
-    function _Find(const Data): Boolean; overload;
     property Count: Integer read FCount;
     property OnFreeTrieNode : TFreeTrieNodeEvent read FOnFreeTrieNode write FOnFreeTrieNode;
     property OnInitLeaf : TInitLeafEvent read FOnInitLeaf write FOnInitLeaf;
   end;
 
+  THashedContainer = class(TBaseHashedContainer)
+  public
+    function _Find(const Data): Boolean; overload;
+    procedure Clear; virtual; abstract;
+    procedure Pack; virtual; abstract;
+    function Next(var _AIterator; ADepth: Byte = 0): Boolean; virtual; abstract;
+    function Add(const Data; out Node : PTrieLeafNode; out WasBusy : Boolean) : Boolean; virtual; abstract;
+    procedure Remove(const Data); virtual; abstract;
+    function Find(const Data; out ANode: PTrieLeafNode; out AChildIndex: Byte; LeafHasChildIndex: Boolean): Boolean; virtual; abstract;
+    function GetObjectFromIterator(const _AIterator): Pointer; virtual; abstract;
+    procedure InitIterator(out _AIterator); virtual;
+  end;
+
+
 implementation
 
 { THashedContainer }
 
-constructor THashedContainer.Create(AHashSize: Byte; ALeafSize: Cardinal);
+constructor TBaseHashedContainer.Create(AHashSize: Byte; ALeafSize: Cardinal);
 begin
   inherited Create;
   FHashSize := AHashSize;
   FLeafSize := ALeafSize;
 end;
 
-function THashedContainer._Find(const Data): Boolean;
-var
-  DummyChildIndex : Byte;
-  DummyNode : PTrieLeafNode;
-begin
-  Result := Find(Data, DummyNode, DummyChildIndex, False);
-end;
-
-procedure THashedContainer.FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
+procedure TBaseHashedContainer.FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
 begin
   if assigned(FOnFreeTrieNode) then
     FOnFreeTrieNode(ANode, Level);
@@ -119,7 +116,7 @@ begin
   Result := (HashSize div BitsForChildIndexPerBucket - Level - 1) * BitsForChildIndexPerBucket;
 end;
 
-function THashedContainer.GetBitFieldIndex(const Data; Level: Byte): Byte;
+function TBaseHashedContainer.GetBitFieldIndex(const Data; Level: Byte): Byte;
 begin
   {$IFNDEF FPC}
   Result := 0;
@@ -135,40 +132,32 @@ begin
   end;
 end;
 
-function THashedContainer.GetBusyIndicator(ANode: PTrieBaseNode; BitFieldIndex:
+function TBaseHashedContainer.GetBusyIndicator(ANode: PTrieBaseNode; BitFieldIndex:
     Byte): Boolean;
 begin
   Result := (ANode^.Busy and (Word(1) shl BitFieldIndex)) <> 0;
 end;
 
-function THashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
+function TBaseHashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
     Byte): Byte;
 begin
   Result := (ANode^.ChildIndex shr (Int64(BitFieldIndex) * BitsForChildIndexPerBucket)) and BucketMask;
 end;
 
-procedure THashedContainer.InitIterator(out _AIterator);
-var
-  AIterator : THashedContainerIterator absolute _AIterator;
-begin
-  AIterator.AtEnd := False;
-  AIterator.LastResult64 := 0;
-end;
-
-procedure THashedContainer.InitLeaf(var Leaf);
+procedure TBaseHashedContainer.InitLeaf(var Leaf);
 begin
   if assigned(FOnInitLeaf) then
     FOnInitLeaf(Leaf);
 end;
 
-procedure THashedContainer.RaiseHashSizeError;
+procedure TBaseHashedContainer.RaiseHashSizeError;
 const
   STR_HASHSIZEERROR = 'Wrong hash size';
 begin
   raise EHashedContainer.Create(STR_HASHSIZEERROR);
 end;
 
-procedure THashedContainer.SetBusyIndicator(ANode: PTrieBaseNode;
+procedure TBaseHashedContainer.SetBusyIndicator(ANode: PTrieBaseNode;
     BitFieldIndex: Byte; Value: Boolean);
 begin
   if Value then
@@ -181,11 +170,29 @@ begin
   Result := Int64(-1) xor (Int64(BucketMask) shl (BitFieldIndex * BitsForChildIndexPerBucket));
 end;
 
-procedure THashedContainer.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
+procedure TBaseHashedContainer.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
     ChildIndex: Byte);
 begin
   ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask(BitFieldIndex);
   ANode^.ChildIndex := ANode^.ChildIndex or (_Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+end;
+
+{ THashedContainer }
+
+function THashedContainer._Find(const Data): Boolean;
+var
+  DummyChildIndex : Byte;
+  DummyNode : PTrieLeafNode;
+begin
+  Result := Find(Data, DummyNode, DummyChildIndex, False);
+end;
+
+procedure THashedContainer.InitIterator(out _AIterator);
+var
+  AIterator : THashedContainerIterator absolute _AIterator;
+begin
+  AIterator.AtEnd := False;
+  AIterator.LastResult64 := 0;
 end;
 
 end.

@@ -150,6 +150,7 @@
       <Unit12>
         <Filename Value="xxhash.pas"/>
         <IsPartOfProject Value="True"/>
+        <UnitName Value="xxHash"/>
       </Unit12>
     </Units>
   </ProjectOptions>

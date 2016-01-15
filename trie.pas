@@ -104,7 +104,6 @@ type
     procedure CleanLowBitsIteratorLastResult(var AIterator : TTrieIterator; ATrieDepth : Byte); inline;
     function TrieDepthToHashSize(ATrieDepth: Byte): Byte; inline;
   protected
-    FCount : Integer;
     procedure InitLeaf(var Leaf);
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure RaiseTrieDepthError;
@@ -123,13 +122,11 @@ type
     procedure InitIterator(out _AIterator); override;
     function Next(var _AIterator; ADepth: Byte = 0): Boolean; override;
     procedure Pack; override;
-    property Count : Integer read FCount;
   end;
 
 implementation
 
 resourcestring
-  STR_DUPLICATESNOTALLOWED = 'Duplicates not allowed';
   STR_RANDOMACCESSNOTENABLED = 'Random access not enabled';
   STR_RANDOMACCESSENABLEDONLYFORSEQUENTIALACCESS = 'Random access enabled only for sequential access';
   STR_INDEXOUTOFBOUNDS = 'Index out of bounds';
@@ -193,7 +190,7 @@ begin
   end
   else
   begin
-    ReallocMem(ANode^.Children, (ANode^.Base.ChildrenCount + 1) * LeafSize);
+    ReallocMem(ANode^.Children, Cardinal(ANode^.Base.ChildrenCount + 1) * LeafSize);
     InitLeaf(PTrieLeafNode(@PTrieLeafNodeArray(ANode^.Children)^[ANode^.Base.ChildrenCount * LeafSize])^);
   end;
   Result := ANode^.Base.ChildrenCount;

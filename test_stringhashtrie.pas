@@ -67,7 +67,7 @@ type
 implementation
 
 uses
-  Hash_Trie, Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
+  Hash_Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
 
 procedure TStringHashTrieTest.TestCreate;
 begin
