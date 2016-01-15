@@ -63,12 +63,12 @@ type
     FLeafSize : Cardinal;
   protected
     FCount: Integer;
-    function GetBitFieldIndex(const Data; Level : Byte): Byte; inline;
+    function GetBitFieldIndex(const Data; Level : Byte): Byte; {$IFNDEF FPC} inline; {$ENDIF}
     function GetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte): Boolean; inline;
     function GetChildIndex(ANode : PTrieBranchNode; BitFieldIndex : Byte): Byte; inline;
     procedure SetBusyIndicator(ANode : PTrieBaseNode; BitFieldIndex : Byte; Value : Boolean); inline;
     procedure SetChildIndex(ANode : PTrieBranchNode; BitFieldIndex, ChildIndex : Byte); inline;
-    procedure InitLeaf(var Leaf); inline;
+    procedure InitLeaf(var Leaf); {$IFNDEF FPC} inline; {$ENDIF}
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure RaiseHashSizeError; inline;
     property LeafSize : Cardinal read FLeafSize;

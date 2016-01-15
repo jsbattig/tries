@@ -81,16 +81,16 @@ type
     procedure NextLeafTreeNode(var AIterator: THashTrieIterator; AFreeNodes:
         Boolean = False);
   protected
-    procedure InitLeaf(var Leaf); inline;
-    procedure FreeKey(key: Pointer; KeySize: Cardinal); virtual;
+    procedure InitLeaf(var Leaf); {$IFNDEF FPC} inline; {$ENDIF}
+    procedure FreeKey({%H-}key: Pointer; {%H-}KeySize: Cardinal); virtual;
     procedure FreeValue({%H-}value : Pointer); virtual;
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
-        AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); virtual;
+        {%H-}AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); virtual;
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
-    function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; virtual;
+    function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64; virtual;
     function Add(var kvp: TKeyValuePair): Boolean;
     function InternalFind(key: Pointer; KeySize: Cardinal; out HashTrieNode:
