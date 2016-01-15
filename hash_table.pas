@@ -23,7 +23,7 @@ type
     FHashTable : PHashTableNodeArray;
     FHashTableMaxNodeCount : Cardinal;
     FLeafNodesAllocator : TFixedBlockHeap;
-    function GetTableIndex(const Data): Word; inline;
+    function GetTableIndex(const Data): Word; {$IFNDEF FPC} inline; {$ENDIF}
     function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
   protected
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);

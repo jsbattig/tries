@@ -10,8 +10,7 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  trieAllocators,
-  HashedContainer
+  trieAllocators
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -39,8 +38,8 @@ type
   protected
     function CompareKeys(key1: Pointer; {%H-}KeySize1: Cardinal; key2: Pointer;
         {%H-}KeySize2: Cardinal): Boolean; override;
-    function Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal; override;
-    procedure FreeKey(key: Pointer; KeySize: Cardinal); override;
+    function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; override;
+    procedure FreeKey(key: Pointer; {%H-}KeySize: Cardinal); override;
   public
     constructor Create(AHashSize: Byte = 20);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}

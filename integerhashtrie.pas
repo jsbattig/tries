@@ -121,13 +121,12 @@ var
 {$ENDIF}
 begin
   {$IFNDEF CPUX64}
-  if sizeof(Pointer) <> sizeof(Int64) then
-  begin
-    New(keyInt64);
-    keyInt64^ := key;
-    Result := InternalAdd(keyInt64, sizeof(key), Value);
-  end
-  else {$ENDIF} Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
+  New(keyInt64);
+  keyInt64^ := key;
+  Result := InternalAdd(keyInt64, sizeof(key), Value);
+  {$ELSE}
+  Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
+  {$ENDIF}
 end;
 
 function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
