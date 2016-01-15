@@ -221,9 +221,9 @@ begin
   FStrHashTrie.Add('Hello World 2', Self);
   FStrHashTrie.InitIterator(AIterator);
   Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
-  CheckEquals('Hello World 2', AKey, 'AKey doesn''t match');
-  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
   CheckEquals('Hello World', AKey, 'AKey doesn''t match');
+  Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
+  CheckEquals('Hello World 2', AKey, 'AKey doesn''t match');
   Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
 end;
 
@@ -418,6 +418,8 @@ const
 var
   i : integer;
 begin
+  FStrHashTrie.Free;
+  FStrHashTrie := TStringHashTrie.Create(20, True);
   for i := 0 to Count - 1 do
     FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
   for i := 0 to Count - 1 do

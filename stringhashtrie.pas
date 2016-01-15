@@ -10,7 +10,8 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  trieAllocators
+  trieAllocators,
+  hashedcontainer
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -66,7 +67,7 @@ type
 implementation
 
 uses
-  uSuperFastHash;
+  uSuperFastHash, xxHash;
 
 { TStringHashTrie }
 
@@ -93,7 +94,9 @@ end;
 function TStringHashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal):
     Cardinal;
 begin
-  Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive);
+  if FCaseInsensitive then
+    Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive)
+  else Result := xxHash32Calc(key, KeySize, ASeed);
 end;
 
 procedure TStringHashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
@@ -182,20 +185,6 @@ var
 begin
   Result := Find(key, Dummy);
 end;
-
-(*
-function TStringHashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed:
-    _Int64): Int64;
-var
-  Upper : AnsiString;
-begin
-  if FCaseInsensitive then
-  begin
-    Upper := UpperCase(AnsiString(PAnsiChar(key)));
-    Result := Cardinal(xxHash64Calc(PAnsiChar(Upper), KeySize, ASeed));
-  end
-  else Result := Cardinal(xxHash64Calc(key, KeySize, ASeed));
-end; *)
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;
 begin

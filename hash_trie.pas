@@ -74,7 +74,6 @@ type
     FTrieDepth: Byte;
     function AddOrReplaceNode(var Root: PKeyValuePairNode; const kvp:
         TKeyValuePair): Boolean;
-    function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
     procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
         PKeyValuePairNode; NextMove: TIteratorMovement);
     function NewKVPNode(const kvp: TKeyValuePair): PKeyValuePairNode;
@@ -109,10 +108,17 @@ type
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
 
+function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
+
 implementation
 
 uses
-  SysUtils, uSuperFastHash;
+  xxHash, SysUtils, uSuperFastHash;
+
+function HashSizeToTrieDepth(AHashSize: Byte): Byte;
+begin
+  Result := AHashSize div BitsForChildIndexPerBucket;
+end;
 
 const
   TRIE_HASH_SEED = $FEA0945B;
@@ -153,7 +159,8 @@ end;
 
 function THashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal): Cardinal;
 begin
-  Result := SuperFastHash(key, KeySize, False);
+  //Result := SuperFastHash(key, KeySize, False);
+  Result := xxHash32Calc(key, KeySize, ASeed);
 end;
 
 function THashTrie.Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64):
@@ -317,11 +324,6 @@ begin
     trieAllocators.DeAlloc(TmpNode);
   end;
   AIterator.BackTrack := nil;
-end;
-
-function THashTrie.HashSizeToTrieDepth(AHashSize: Byte): Byte;
-begin
-  Result := AHashSize div BitsForChildIndexPerBucket;
 end;
 
 function THashTrie.InternalFind(key: Pointer; KeySize: Cardinal; out

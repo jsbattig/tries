@@ -24,7 +24,6 @@ type
     FHashTableMaxNodeCount : Cardinal;
     FLeafNodesAllocator : TFixedBlockHeap;
     function GetTableIndex(const Data): Word; {$IFNDEF FPC} inline; {$ENDIF}
-    function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
   protected
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure InitLeaf(var Leaf);
@@ -42,10 +41,17 @@ type
     procedure Remove(const Data); override;
   end;
 
+function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
+
 implementation
 
 resourcestring
   SNotSupportedHashSize = 'Not supported hash size. Valid sizes are 16 to 20 bits';
+
+function HashSizeToTrieDepth(AHashSize: Byte): Byte;
+begin
+  Result := AHashSize div BitsForChildIndexPerBucket;
+end;
 
 { THashTable }
 
@@ -218,11 +224,6 @@ begin
   ATableIndex := GetTableIndex(Data);
   if FHashTable^[ATableIndex] <> nil then
     SetBusyIndicator(@FHashTable^[ATableIndex]^.Base, GetBitFieldIndex(Data, HashSizeToTrieDepth(HashSize) - 1), False);
-end;
-
-function THashTable.HashSizeToTrieDepth(AHashSize: Byte): Byte;
-begin
-  Result := AHashSize div BitsForChildIndexPerBucket;
 end;
 
 procedure THashTable.InitLeaf(var Leaf);
