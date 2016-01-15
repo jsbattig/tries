@@ -49,12 +49,14 @@ type
     {$IFDEF HasGenerics}
     procedure TestAddAndFindManyEntriesUsingTDictionary;
     procedure TestAddIterateAndFindManyEntriesTDictionary;
+    procedure TestAddAndFindManyEntriesFastTDictionary;
     {$ENDIF}
     procedure TestRemoveAndPackHash32;
     procedure TestIterator;
     procedure TestAutoFreeValue;
     procedure TestAddTwoValuesAndIterate;
     procedure TestAddAndFindManyEntriesFast;
+    procedure TestAddAndFindManyEntriesFastUsing16bitsHash;
     {$IFDEF UNICODE}
     procedure TestUnicodeChars;
     procedure TestAddAndTraverseUnicode;
@@ -67,7 +69,7 @@ type
 implementation
 
 uses
-  Hash_Trie, Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
+  Hash_Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
 
 procedure TStringHashTrieTest.TestCreate;
 begin
@@ -304,6 +306,25 @@ begin
 end;
 
 {$IFDEF HasGenerics}
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesFastTDictionary;
+const
+  Count = 1024 * 1024 * 1;
+var
+  i : integer;
+  FDict : TDictionary<AnsiString, Pointer>;
+  AValue : Pointer;
+begin
+  FDict := TDictionary<AnsiString, pointer>.Create;
+  try
+    for i := 0 to Count - 1 do
+      FDict.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+    for i := 0 to Count - 1 do
+      Check(FDict.TryGetValue(AnsiString(IntToStr(i)) + 'hello', AValue), 'Item not found');
+  finally
+    FDict.Free;
+  end;
+end;
+
 procedure TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary;
 const
   Count = 1024 * 64;
@@ -397,6 +418,20 @@ const
 var
   i : integer;
 begin
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
+  for i := 0 to Count - 1 do
+    FStrHashTrie.Find(AnsiString(IntToStr(i)) + 'hello');
+end;
+
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesFastUsing16bitsHash;
+const
+  Count = 1024 * 1024 * 1;
+var
+  i : integer;
+begin
+  FStrHashTrie.Free;
+  FStrHashTrie := TStringHashTrie.Create(16);
   for i := 0 to Count - 1 do
     FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
   for i := 0 to Count - 1 do

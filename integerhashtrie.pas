@@ -32,20 +32,20 @@ type
   protected
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; override;
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
-        ASeed: _Int64; AHashSize: Byte); override;
-    procedure FreeKey(key : Pointer); override;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
+        AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); override;
+    procedure FreeKey(key: Pointer; KeySize: Cardinal); override;
   public
     constructor Create(AHashSize: Byte = 20);
     function Add(key: Cardinal; Value: Pointer = nil): Boolean; overload;
     function Add(key: Word; Value: Pointer = nil): Boolean; overload;
     function Add(key: Int64; Value: Pointer = nil): Boolean; overload;
-    function Find(key : Cardinal; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Word; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Int64; out Value : Pointer) : Boolean; reintroduce; overload;
-    function Find(key : Cardinal): Boolean; reintroduce; overload;
-    function Find(key : Word): Boolean; reintroduce; overload;
-    function Find(key : Int64): Boolean; reintroduce; overload; 
+    function Find(key : Cardinal; out Value : Pointer) : Boolean; overload;
+    function Find(key : Word; out Value : Pointer) : Boolean; overload;
+    function Find(key : Int64; out Value : Pointer) : Boolean; overload;
+    function Find(key : Cardinal): Boolean; overload;
+    function Find(key : Word): Boolean; overload;
+    function Find(key : Int64): Boolean; overload;
     function Remove(key : Cardinal) : Boolean; overload;
     function Remove(key : Word) : Boolean; overload;
     function Remove(key : Int64) : Boolean; overload;
@@ -88,19 +88,19 @@ begin
 end;
 
 procedure TIntegerHashTrie.CalcHash(out Hash: THashRecord; key: Pointer;
-    KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
+    KeySize, AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
 var
   AKey : Pointer;
 begin
-  if KeySize <= sizeof(Pointer) then
+  if AOriginalKeySize <= sizeof(Pointer) then
     AKey := @key
   else AKey := Key;
-  inherited CalcHash(Hash, AKey, KeySize, ASeed, AHashSize);
+  inherited CalcHash(Hash, AKey, KeySize, AOriginalKeySize, ASeed, AHashSize);
 end;
 
-procedure TIntegerHashTrie.FreeKey(key: Pointer);
+procedure TIntegerHashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
 begin
-  if (HashSize > 32) and (sizeof(Pointer) <> sizeof(Int64)) then
+  if (KeySize = sizeof(Int64)) and (sizeof(Pointer) <> sizeof(Int64)) then
     Dispose(PInt64(key));
 end;
 
@@ -115,16 +115,19 @@ begin
 end;
 
 function TIntegerHashTrie.Add(key: Int64; Value: Pointer = nil): Boolean;
+{$IFNDEF CPUX64}
 var
   keyInt64 : PInt64;
+{$ENDIF}
 begin
-  if (HashSize > 32) and (sizeof(Pointer) <> sizeof(Int64)) then
+  {$IFNDEF CPUX64}
+  if sizeof(Pointer) <> sizeof(Int64) then
   begin
     New(keyInt64);
     keyInt64^ := key;
     Result := InternalAdd(keyInt64, sizeof(key), Value);
   end
-  else Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
+  else {$ENDIF} Result := InternalAdd({%H-}Pointer(key), sizeof(key), Value);
 end;
 
 function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
