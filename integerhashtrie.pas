@@ -32,8 +32,8 @@ type
   protected
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; override;
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
-        AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); override;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
+        ASeed: _Int64; AHashSize: Byte); override;
     procedure FreeKey(key: Pointer; KeySize: Cardinal); override;
   public
     constructor Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
@@ -88,14 +88,14 @@ begin
 end;
 
 procedure TIntegerHashTrie.CalcHash(out Hash: THashRecord; key: Pointer;
-    KeySize, AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
+    KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
 var
   AKey : Pointer;
 begin
-  if AOriginalKeySize <= sizeof(Pointer) then
+  if KeySize <= sizeof(Pointer) then
     AKey := @key
   else AKey := Key;
-  inherited CalcHash(Hash, AKey, KeySize, AOriginalKeySize, ASeed, AHashSize);
+  inherited CalcHash(Hash, AKey, KeySize, ASeed, AHashSize);
 end;
 
 procedure TIntegerHashTrie.FreeKey(key: Pointer; KeySize: Cardinal);

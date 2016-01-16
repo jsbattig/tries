@@ -94,7 +94,7 @@ function TStringHashTrie.Hash32(key: Pointer; KeySize, ASeed: Cardinal):
     Cardinal;
 begin
   if FCaseInsensitive then
-    Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive)
+    Result := SuperFastHash(PAnsiChar(key), KeySize, FCaseInsensitive, ASeed)
   else Result := xxHash32Calc(key, KeySize, ASeed);
 end;
 

@@ -8,8 +8,8 @@ unit uSuperFastHash;
 
 interface
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean):
-    Cardinal;
+function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean; ASeed:
+    Cardinal = 0): Cardinal;
 function CalcStrCRC32(S: Pointer; ASize: Cardinal): Cardinal;
 function CalcStrCRC32Upper(S: PAnsiChar): Cardinal;
 
@@ -34,15 +34,15 @@ begin
   Result := ((((tmp2 or $80808080) - $66666666) and tmp) shr 2) xor n;
 end;
 
-function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean):
-    Cardinal;
+function SuperFastHash(data: PAnsiChar; Len: Cardinal; AUpper: Boolean; ASeed:
+    Cardinal = 0): Cardinal;
 var
   tmp : Cardinal;
   rem : integer;
   i : integer;
   CurCardinal : Cardinal;
 begin
-  Result := len;
+  Result := len xor ASeed;
   if (len <= 0) or (data = nil)
     then
     begin
