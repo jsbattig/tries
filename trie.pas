@@ -142,7 +142,7 @@ begin
   if (ATrieDepth = 0) or (ALeafSize < sizeof(TTrieLeafNode)) then
     raise ETrie.Create(SInternalErrorCheckParametersPassedToConstructor);
   inherited Create(TrieDepthToHashSize(ATrieDepth), ALeafSize);
-  FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), _64KB div sizeof(TTrieBranchNode));
+  FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), _16KB div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
   if (ATrieDepth < 4) or (ATrieDepth > 64) then

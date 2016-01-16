@@ -73,7 +73,7 @@ uses
 constructor TStringHashTrie.Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
 begin
   inherited Create(AHashSize, AUseHashTable);
-  FPAnsiCharAllocator := TVariableBlockHeap.Create(_64KB);
+  FPAnsiCharAllocator := TVariableBlockHeap.Create(_16KB);
 end;
 
 destructor TStringHashTrie.Destroy;

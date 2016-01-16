@@ -10,6 +10,8 @@ interface
 {$ENDIF}
 
 const
+  _16KB = 16 * 1024;
+  _32KB = 32 * 1024;
   _64KB = 64 * 1024;
   Aligner = sizeof (NativeUInt) - 1;
   MAGIC_NUMBER = $73737300;

@@ -20,12 +20,12 @@ unit test_old_stringhashtrie;
 interface
 
 uses
-  TestFramework, StringHashTrie, SysUtils, HashTrie;
+  TestFramework, SysUtils, Old_HashTrie;
 
 type
   // Test methods for class TStringHashTrie
   
-  TestTStringHashTrie = class(TTestCase)
+  TestTOld_StringHashTrie = class(TTestCase)
   private
     FStringHashTrie: TStringHashTrie;
     Cnt : Integer;
@@ -39,18 +39,18 @@ type
 
 implementation
 
-procedure TestTStringHashTrie.SetUp;
+procedure TestTOld_StringHashTrie.SetUp;
 begin
   FStringHashTrie := TStringHashTrie.Create;
 end;
 
-procedure TestTStringHashTrie.TearDown;
+procedure TestTOld_StringHashTrie.TearDown;
 begin
   FStringHashTrie.Free;
   FStringHashTrie := nil;
 end;
 
-procedure TestTStringHashTrie.TestAddIterateAndFindManyEntries;
+procedure TestTOld_StringHashTrie.TestAddIterateAndFindManyEntries;
 const
   Count = 1024 * 1024;
 var
@@ -63,7 +63,7 @@ begin
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
-procedure TestTStringHashTrie.TravMeth(UserData: Pointer; Key: PChar; Data: TObject; var Done: Boolean);
+procedure TestTOld_StringHashTrie.TravMeth(UserData: Pointer; Key: PChar; Data: TObject; var Done: Boolean);
 var
   AValue : TObject;
 begin
@@ -73,6 +73,6 @@ end;
 
 initialization
   // Register any test cases with the test runner
-  RegisterTest(TestTStringHashTrie.Suite);
+  RegisterTest(TestTOld_StringHashTrie.Suite);
 end.
 
