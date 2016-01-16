@@ -10,8 +10,7 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  trieAllocators,
-  hashedcontainer
+  trieAllocators
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
