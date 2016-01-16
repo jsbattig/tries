@@ -86,8 +86,8 @@ type
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
         KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
-        {%H-}AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); virtual;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
+        ASeed: _Int64; AHashSize: Byte); virtual;
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
     function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64; virtual;
@@ -173,8 +173,8 @@ begin
   Result := Int64(AHash32_1) + Int64(AHash32_2) shl 32;
 end;
 
-procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize,
-    AOriginalKeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
+procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize:
+    Cardinal; ASeed: _Int64; AHashSize: Byte);
 begin
   case AHashSize of
     1..16  : Hash.Hash16 := Hash16(key, KeySize, ASeed);
@@ -235,13 +235,13 @@ var
 begin
   if HashSize * 2 > 64 then
   begin
-    CalcHash(Hash, kvp.Key, kvp.KeySize, kvp.KeySize, TRIE_HASH_SEED, HashSize);
-    CalcHash(TreeHash, kvp.Key, kvp.KeySize div 2, kvp.KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, kvp.Key, kvp.KeySize, TREE_HASH_SEED, HashSize);
     kvp.Hash := TreeHash.Hash16;
   end
   else
   begin
-    CalcHash(Hash, kvp.Key, kvp.KeySize, kvp.KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED, 64);
     kvp.Hash := Hash.Hash16_3;
   end;
   FContainer.Add(Hash, PTrieLeafNode(Node), WasNodeBusy);
@@ -334,12 +334,12 @@ var
 begin
   if HashSize * 2 > 64 then
   begin
-    CalcHash(Hash, key, KeySize, KeySize, TRIE_HASH_SEED, HashSize);
-    CalcHash(TreeHash, key, KeySize div 2, KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(Hash, key, KeySize, TRIE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
   end
   else
   begin
-    CalcHash(Hash, key, KeySize, KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(Hash, key, KeySize, TRIE_HASH_SEED, 64);
     TreeHash.Hash16 := Hash.Hash16_3;
   end;
   if FContainer.Find(Hash, PTrieLeafNode(HashTrieNode), AChildIndex, True) then
@@ -401,12 +401,12 @@ begin
   Node := PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex];
   if HashSize * 2 > 64 then
   begin
-    CalcHash(TreeHash, key, KeySize div 2, KeySize, TREE_HASH_SEED, HashSize);
+    CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
     Hash := TreeHash.Hash16;
   end
   else
   begin
-    CalcHash(TreeHash, key, KeySize, KeySize, TRIE_HASH_SEED, 64);
+    CalcHash(TreeHash, key, KeySize, TRIE_HASH_SEED, 64);
     Hash := TreeHash.Hash16_3;
   end;
   while Node <> nil do
