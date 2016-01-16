@@ -66,7 +66,7 @@ begin
   GetMem(FHashTable, FHashTableMaxNodeCount * sizeof(PTrieLeafNode));
   for i := 0 to FHashTableMaxNodeCount - 1 do
     FHashTable^[i] := nil;
-  FLeafNodesAllocator := TFixedBlockHeap.Create(LeafSize, _64KB div LeafSize);
+  FLeafNodesAllocator := TFixedBlockHeap.Create(LeafSize, _16KB div LeafSize);
 end;
 
 destructor THashTable.Destroy;

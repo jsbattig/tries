@@ -143,8 +143,8 @@ begin
   else FContainer := TTrie.Create(FTrieDepth, sizeof(THashTrieNode));
   FContainer.OnFreeTrieNode := {$IFDEF FPC}@{$ENDIF}FreeTrieNode;
   FContainer.OnInitLeaf := {$IFDEF FPC}@{$ENDIF}InitLeaf;
-  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _64KB div sizeof(TKeyValuePairNode));
-  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _64KB div sizeof(TKeyValuePairBacktrackNode));
+  FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _16KB div sizeof(TKeyValuePairNode));
+  FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _16KB div sizeof(TKeyValuePairBacktrackNode));
 end;
 
 destructor THashTrie.Destroy;
