@@ -127,6 +127,7 @@ type
 implementation
 
 resourcestring
+  SInternalErrorCheckParametersPassedToConstructor = 'Internal error: check parameters passed to constructor TTrie.Create()';
   STR_RANDOMACCESSNOTENABLED = 'Random access not enabled';
   STR_RANDOMACCESSENABLEDONLYFORSEQUENTIALACCESS = 'Random access enabled only for sequential access';
   STR_INDEXOUTOFBOUNDS = 'Index out of bounds';
@@ -138,6 +139,8 @@ resourcestring
 constructor TTrie.Create(ATrieDepth: Byte; ALeafSize: Cardinal = sizeof(
     TTrieLeafNode));
 begin
+  if (ATrieDepth = 0) or (ALeafSize < sizeof(TTrieLeafNode)) then
+    raise ETrie.Create(SInternalErrorCheckParametersPassedToConstructor);
   inherited Create(TrieDepthToHashSize(ATrieDepth), ALeafSize);
   FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), _64KB div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();

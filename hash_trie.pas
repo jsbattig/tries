@@ -115,6 +115,10 @@ implementation
 uses
   xxHash, SysUtils, uSuperFastHash;
 
+resourcestring
+  SInternalErrorUseHashTableWithHashSize = 'Internal error: if AUseHashTable is True then AHashSize must be <= 20 calling constructor THashTrie.Create()';
+  SInternalErrorCheckParameterAHashSize = 'Internal error: check parameter AHashSize calling THashTrie.Create() constructor';
+
 function HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin
   Result := AHashSize div BitsForChildIndexPerBucket;
@@ -128,6 +132,10 @@ const
 
 constructor THashTrie.Create(AHashSize: Byte; AUseHashTable: Boolean);
 begin
+  if (AHashSize mod BitsForChildIndexPerBucket <> 0) or (AHashSize < 16) or (AHashSize > 64) then
+    raise EHashTrie.Create(SInternalErrorCheckParameterAHashSize);
+  if AUseHashTable and (AHashSize > 20) then
+    raise EHashTrie.Create(SInternalErrorUseHashTableWithHashSize);
   FTrieDepth := HashSizeToTrieDepth(AHashSize);
   inherited Create(AHashSize, sizeof(THashTrieNode));
   if (AHashSize <= 20) and AUseHashTable then
