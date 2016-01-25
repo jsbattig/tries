@@ -58,7 +58,7 @@ type
       4 : (Hash16_1, Hash16_2, Hash16_3, Hash16_4 : Word);
   end;
 
-  TAutoFreeMode = (afmFree, afmFreeMem);
+  TAutoFreeMode = (afmFree, afmFreeMem, afmStrDispose);
   TDuplicatesMode = (dmNotAllow, dmAllowed, dmReplaceExisting);
 
   { THashTrie }
@@ -205,9 +205,11 @@ end;
 procedure THashTrie.FreeValue(value: Pointer);
 begin
   if FAutoFreeValue then
-    if FAutoFreeValueMode = afmFree then
-      TObject(value).Free
-    else FreeMem(value);
+    case FAutoFreeValueMode of
+      afmFree       : TObject(value).Free;
+      afmFreeMem    : FreeMem(value);
+      afmStrDispose : StrDispose(value);
+    end;
 end;
 
 procedure THashTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);
@@ -438,7 +440,8 @@ begin
           Node^.Next^.Right := Node^.Right;
         end;
         FreeKey(Node^.KVP.Key, Node^.KVP.KeySize);
-        FreeValue(Node^.KVP.Value);
+        if Node^.KVP.Value <> nil then        
+          FreeValue(Node^.KVP.Value);
         if SmallestNode <> nil then
         begin
           if SmallestNode <> Node^.Right then
@@ -575,7 +578,8 @@ var
     begin
       kvp := @AIterator.BackTrack^.Node^.KVP;
       FreeKey(kvp^.Key, kvp^.KeySize);
-      FreeValue(kvp^.Value);
+      if kvp^.Value <> nil then      
+        FreeValue(kvp^.Value);
       trieAllocators.DeAlloc(AIterator.BackTrack^.Node);
     end;
     BacktrackNode := AIterator.BackTrack;

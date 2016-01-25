@@ -40,6 +40,7 @@ type
         {%H-}KeySize2: Cardinal): Boolean; override;
     function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; override;
     procedure FreeKey(key: Pointer; {%H-}KeySize: Cardinal); override;
+    property PAnsiCharAllocator : TVariableBlockHeap read FPAnsiCharAllocator;
   public
     constructor Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
     function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
