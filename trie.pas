@@ -145,7 +145,7 @@ begin
   FTrieBranchNodeAllocator := TFixedBlockHeap.Create(sizeof(TTrieBranchNode), _16KB div sizeof(TTrieBranchNode));
   FRoot := NewTrieBranchNode();
   FLastIndex := -1;
-  if (ATrieDepth < 4) or (ATrieDepth > 64) then
+  if (ATrieDepth < 4) or (ATrieDepth > 16) then
     RaiseTrieDepthError;
   FTrieDepth := ATrieDepth;
   FLastMidBranchNode := FTrieDepth - 3;
