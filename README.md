@@ -2,11 +2,10 @@
 
 This class provides the basis to construct a Trie based container.
 
-On it's basic form it can be used to store 16, 32 and 64 bits based data elements.
+On it's basic form, The TTrie class can be used to store 16, 32 and 64 bits based data elements.
 
 The structure provides a fixed depth Trie implementation, which in turns renders
-equal time to Find and Remove nodes, and consistent Add times incurring only in
-extra overhead when needing the acquire new nodes.
+equal time to Find, Remove and Add nodes.
 
 The order of the structure is O(D) where D is the depth of the Trie, which depends
 if constructed to store 16, 32 or 64 bits values.
@@ -35,22 +34,24 @@ operations.
 The class also provides a Pack method that be used to keep storage in check when lots
 of Removed have been issued.
 
+TIntegerHashTrie and TStringHashTrie are provided as descendants of THashTrie generic class.
+THashTrie has two modes of operation:
+* Use hash table for root node, with Trie structure with 16 nodes per bucket for next level
+* Full HashTrie structure from root node
+
+hash table provides better performance of course, but hashtrie has more efficient memory
+footprint when storing small number of elements.
+
 Tested TStringHashTrie against delphi's TDictionary<> and C# Dictionary<> classes.
 
-Using a load of 1 million strings, the three contenders performed within the same
-ballpark in terms of time to add, iterate and find the items.
+TStringHashTrie beats both, C# and Delphi implementations. Difference is larger when used 
+hash table for root node.
 
-When adjusting Delphi reduced speed as compared to C# because of the cost of memory
-deallocation, TDictionary<> and Dicionary<> performed similary for a load of 10 million
-strings.
-TStringHashTrie performed took a little shy of double the time to proces 10 million
-strings.
+Memory footprint overall for large loads is also better, ranging from 30%-40% better. For
+small number of elements definitively using pure hashtrie rather than hash table root node
+will use dramatically less memory.
 
-The difference was on memory allocation.
-For 10 million strings, compiling in 32 bits, TDictionary<> used about 1GB of RAM.
-C# Dictionary<> used about 750MB while TStringHashTrie used about 400MB.
+Tests compiled in Delphi 2007 produced even better results because Strings didn’t have to undergo
+conversion from UTF16 to Ansi before inserting into structure.
 
-For raw speed TDictionary<> is definitively better than TStringHashTrie, but at a high
-memory cost.
-
-For Delphi 2007 I didn't bother testing against the only default option: sorted TStringList.
+TStringHashTrie support Unicode in UTF8 form.
