@@ -58,7 +58,7 @@ type
       4 : (Hash16_1, Hash16_2, Hash16_3, Hash16_4 : Word);
   end;
 
-  TAutoFreeMode = (afmFree, afmFreeMem, afmStrDispose);
+  TAutoFreeMode = (afmFree, afmFreeMem, afmStrDispose, afmReleaseInterface);
   TDuplicatesMode = (dmNotAllow, dmAllowed, dmReplaceExisting);
 
   { THashTrie }
@@ -206,9 +206,10 @@ procedure THashTrie.FreeValue(value: Pointer);
 begin
   if FAutoFreeValue then
     case FAutoFreeValueMode of
-      afmFree       : TObject(value).Free;
-      afmFreeMem    : FreeMem(value);
-      afmStrDispose : StrDispose(value);
+      afmFree             : TObject(value).Free;
+      afmFreeMem          : FreeMem(value);
+      afmStrDispose       : StrDispose(value);
+      afmReleaseInterface : IUnknown(Value)._Release;
     end;
 end;
 
