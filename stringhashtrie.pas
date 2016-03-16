@@ -141,6 +141,8 @@ begin
   move(PAnsiChar(key)^, kvp.Key^, kvp.KeySize + 1);
   kvp.Value := Value;
   Result := inherited Add(kvp);
+  if not Result then
+    trieAllocators.DeAlloc(kvp.Key);
 end;
 
 {$IFDEF UNICODE}
@@ -164,6 +166,8 @@ begin
   move(PAnsiChar(UTF8Str)^, kvp.Key^, kvp.KeySize + 1);
   kvp.Value := Value;
   Result := inherited Add(kvp);
+  if not Result then
+    trieAllocators.Dealloc(kvp.Key);
 end;
 {$ENDIF}
 
