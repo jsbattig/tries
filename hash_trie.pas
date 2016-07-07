@@ -233,7 +233,11 @@ begin
       until AIterator.BackTrack = nil;
     end;
     if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
+    begin
       FreeMem(PHashTrieNode(ANode)^.Children);
+      PHashTrieNode(ANode)^.Children := nil;
+      PHashTrieNode(ANode)^.Base.ChildrenCount := 0;
+    end;
   end;
 end;
 
