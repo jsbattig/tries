@@ -67,12 +67,15 @@ type
     property PAnsiCharAllocator : TVariableBlockHeap read FPAnsiCharAllocator;
   public
     constructor Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
-    function Add(const key: AnsiString; Value: Pointer = nil): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
+    function Add(const key: AnsiString; Value: Pointer = nil): Boolean; overload;
+    function Add(const key: AnsiString; Value: IUnknown): Boolean; overload;
     function Find(const key: AnsiString; out Value: Pointer): Boolean; overload;
+    function Find(const key: AnsiString; out Value: IUnknown): Boolean; overload;
     function Find(const key: AnsiString): Boolean; overload;
     function Remove(const key: AnsiString): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
     function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value:
-        Pointer): Boolean; {$IFDEF UNICODE} overload; {$ENDIF}
+        Pointer): Boolean; overload;
+    function Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value: IUnknown): Boolean; overload;
     destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
@@ -138,6 +141,8 @@ begin
   move(PAnsiChar(key)^, kvp.Key^, kvp.KeySize + 1);
   kvp.Value := Value;
   Result := inherited Add(kvp);
+  if not Result then
+    trieAllocators.DeAlloc(kvp.Key);
 end;
 
 {$IFDEF UNICODE}
@@ -161,8 +166,17 @@ begin
   move(PAnsiChar(UTF8Str)^, kvp.Key^, kvp.KeySize + 1);
   kvp.Value := Value;
   Result := inherited Add(kvp);
+  if not Result then
+    trieAllocators.Dealloc(kvp.Key);
 end;
 {$ENDIF}
+
+function TStringHashTrie.Add(const key: AnsiString; Value: IUnknown): Boolean;
+begin
+  if (Value <> nil) and AutoFreeValue and (AutoFreeValueMode = afmReleaseInterface) then
+    Value._AddRef;
+  Result := Add(key, Pointer(Value));
+end;
 
 function TStringHashTrie.Find(const key: AnsiString; out Value: Pointer):
     Boolean;
@@ -208,6 +222,13 @@ var
   Dummy : Pointer;
 begin
   Result := Find(key, Dummy);
+end;
+
+function TStringHashTrie.Find(const key: AnsiString; out Value: IUnknown): Boolean;
+begin
+  Result := Find(key, Pointer(Value));
+  if Result and (Value <> nil) then
+    Value._AddRef;
 end;
 
 function TStringHashTrie.Remove(const key: AnsiString): Boolean;
@@ -271,6 +292,13 @@ procedure TStringHashTrie.InitTraversal(out It: THashTrieIterator; out
 begin
   InitIterator(It);
   ADone := False;
+end;
+
+function TStringHashTrie.Next(var AIterator: THashTrieIterator; out key: AnsiString; out Value: IUnknown): Boolean;
+begin
+  Result := Next(AIterator, key, Pointer(Value));
+  if Result and (Value <> nil) then  
+    Value._AddRef;
 end;
 
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:
