@@ -98,10 +98,11 @@ type
     function NextNode(ACurNode : PTrieBranchNode; ALevel, AChildIndex : Byte) : Pointer; inline;
     function GetItem(Index: Integer): Pointer;
     function IteratorBacktrack(var AIterator : TTrieIterator) : Boolean;
-    procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
+    procedure PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer); overload;
     procedure FreeTrieBranchNodeArray(const Arr : PTrieNodeArray; ChildrenCount, Level : Byte);
     procedure FreeTrieLeafNodeArray(const Arr : PTrieLeafNodeArray; ChildrenCount, Level : Byte);
     procedure CleanLowBitsIteratorLastResult(var AIterator : TTrieIterator; ATrieDepth : Byte); inline;
+    procedure PackNode(var AIterator: TTrieIterator; const ChildrenBackup: array of Byte); overload;
     function TrieDepthToHashSize(ATrieDepth: Byte): Byte; inline;
   protected
     procedure InitLeaf(var Leaf);
@@ -337,6 +338,7 @@ var
   AIterator : TTrieIterator;
   PackingNode : Boolean;
   ChildrenPointersBackup : array of Pointer;
+  ChildrenLeafsBackup : array of Byte;
   procedure BackupChildren;
   var
     i, _ChildIndex : Integer;
@@ -352,8 +354,25 @@ var
       end;
     end;
   end;
+  procedure BackupChildrenLeafs;
+  var
+    i, _ChildIndex : Integer;
+  begin
+    for i := low(ChildrenLeafsBackup) to high(ChildrenLeafsBackup) do
+      ChildrenLeafsBackup[i] := 0;
+    for i := 0 to BitFieldIndex - 1 do
+    begin
+      if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], i) then
+      begin
+        _ChildIndex := GetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level]), i);
+        move(PTrieLeafNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[Cardinal(_ChildIndex) * LeafSize],
+             ChildrenLeafsBackup[Cardinal(i) * LeafSize], LeafSize);
+      end;
+    end;
+  end;
 begin
   SetLength(ChildrenPointersBackup, ChildrenPerBucket);
+  SetLength(ChildrenLeafsBackup, ChildrenPerBucket * LeafSize);
   InitIterator(AIterator);
   while Next(AIterator, FTrieDepth - 1) do
   begin
@@ -367,12 +386,19 @@ begin
           if AIterator.Level = FLastMidBranchNode + 1 then
             if PTrieLeafNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)])^.Base.Busy = 0 then
             begin
-              PackingNode := True;
+              if not PackingNode then
+              begin
+                BackupChildrenLeafs;
+                PackingNode := True;
+              end;
               dec(AIterator.NodeStack[AIterator.Level]^.ChildrenCount);
               SetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex, False);
               FreeTrieNode(@PTrieLeafNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex * Integer(LeafSize)], AIterator.Level + 1);
             end
-            else { keep going, there's busy nodes on Children }
+            else if PackingNode then
+              move(PTrieLeafNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[Cardinal(ChildIndex) * LeafSize],
+                   ChildrenLeafsBackup[Cardinal(BitFieldIndex) * LeafSize], LeafSize)
+            else // Keep going. Node is Busy and we are not backing up nodes
           else if PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex]^.Base.Busy = 0 then
           begin
             if not PackingNode then
@@ -388,7 +414,10 @@ begin
             ChildrenPointersBackup[BitFieldIndex] := PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[ChildIndex];
         end;
       if PackingNode then
-        PackNode(AIterator, ChildrenPointersBackup);
+        if AIterator.Level <= FLastMidBranchNode then        
+          PackNode(AIterator, ChildrenPointersBackup)
+        else
+          PackNode(AIterator, ChildrenLeafsBackup);
       dec(AIterator.Level);
     end;
     AIterator.Level := 0;
@@ -475,40 +504,27 @@ begin
   Result := True;
 end;
 
-procedure TTrie.PackNode(var AIterator: TTrieIterator;
-  const ChildrenBackup: array of Pointer);
+procedure TTrie.PackNode(var AIterator : TTrieIterator; const ChildrenBackup : array of Pointer);
 var
   j, BitFieldIndex : Integer;
 begin
-  if AIterator.Level <= FLastMidBranchNode then
+  PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex := 0;
+  if AIterator.NodeStack[AIterator.Level]^.ChildrenCount > 0 then
   begin
-    if AIterator.NodeStack[AIterator.Level]^.ChildrenCount > 0 then
-    begin
-      ReallocMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children, AIterator.NodeStack[AIterator.Level]^.ChildrenCount * sizeof(Pointer));
-      j := 0;
-      PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex := 0;
-      for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
-        if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex) then
-        begin
-          PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[j] := ChildrenBackup[BitFieldIndex];
-          SetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level]), BitFieldIndex, j);
-          inc(j);
-        end;
-    end
-    else
-    begin
-      FreeMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children);
-      PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children := nil;
-      inc(AIterator.BreadCrumbs[AIterator.Level]);
-    end;
+    ReallocMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children, AIterator.NodeStack[AIterator.Level]^.ChildrenCount * sizeof(Pointer));
+    j := 0;
+    for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
+      if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex) then
+      begin
+        PTrieNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[j] := ChildrenBackup[BitFieldIndex];
+        SetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level]), BitFieldIndex, j);
+        inc(j);
+      end;
   end
   else
   begin
-    if AIterator.NodeStack[AIterator.Level]^.ChildrenCount <= 0 then
-    begin
-      FreeMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children);
-      PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children := nil;
-    end;
+    FreeMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children);
+    PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children := nil;
     inc(AIterator.BreadCrumbs[AIterator.Level]);
   end;
 end;
@@ -556,6 +572,34 @@ begin
   TTrieLeafNode(Leaf).Base.Busy := 0;
   TTrieLeafNode(Leaf).Base.ChildrenCount := 0;
   inherited;
+end;
+
+procedure TTrie.PackNode(var AIterator: TTrieIterator; const ChildrenBackup: array of Byte);
+var
+  j, BitFieldIndex : Cardinal;
+begin
+  PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex := 0;
+  if AIterator.NodeStack[AIterator.Level]^.ChildrenCount > 0 then
+  begin
+    ReallocMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children,
+               AIterator.NodeStack[AIterator.Level]^.ChildrenCount * LeafSize);
+    j := 0;
+    for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
+      if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex) then
+      begin
+        move(ChildrenBackup[BitFieldIndex * LeafSize],
+             PTrieLeafNodeArray(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children)^[j * LeafSize],
+             LeafSize);
+        SetChildIndex(PTrieBranchNode(AIterator.NodeStack[AIterator.Level]), BitFieldIndex, j);
+        inc(j);
+      end;
+  end
+  else
+  begin
+    FreeMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children);
+    PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children := nil;
+    inc(AIterator.BreadCrumbs[AIterator.Level]);
+  end;
 end;
 
 function TTrie.TrieDepthToHashSize(ATrieDepth: Byte): Byte;

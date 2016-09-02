@@ -303,6 +303,8 @@ begin
         PrevNode := Node;
         if CompareKeys(Node^.KVP.Key, Node^.KVP.KeySize, kvp.Key, kvp.KeySize) then
         begin
+          if (Node^.KVP.Value <> nil) and (Node^.KVP.Value <> kvp.Value) then
+            FreeValue(Node^.KVP.Value);
           Node^.KVP.Value := kvp.Value;
           Result := False;
           exit;

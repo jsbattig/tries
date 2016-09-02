@@ -50,6 +50,8 @@ type
   { TIntegerHashTrie }
   TIntegerHashTrie = class(THashTrie)
   private
+    FKeySize : Integer;
+    procedure CheckKeySize(KeySize: Integer);
     function InternalAdd(key: Pointer; KeySize: Cardinal; Value: Pointer): Boolean;
     function InternalFind(key: Pointer; KeySize: Cardinal; out Value: Pointer):
         Boolean;
@@ -118,7 +120,8 @@ var
 begin
   if KeySize <= sizeof(Pointer) then
     AKey := @key
-  else AKey := Key;
+  else
+    AKey := Key;
   inherited CalcHash(Hash, AKey, KeySize, ASeed, AHashSize);
 end;
 
@@ -153,6 +156,12 @@ begin
   {$ENDIF}
 end;
 
+procedure TIntegerHashTrie.CheckKeySize(KeySize: Integer);
+begin
+  if (FKeySize > 0) and (FKeySize <> KeySize)  then
+    raise EIntegerHashTrie.Create('Changing keysize for TIntegerHashTrie not supported');
+end;
+
 function TIntegerHashTrie.Find(key: Cardinal; out Value: Pointer): Boolean;
 begin
   Result := InternalFind({%H-}Pointer(key), sizeof(key), Value);
@@ -167,7 +176,8 @@ function TIntegerHashTrie.Find(key: Int64; out Value: Pointer): Boolean;
 begin
   if sizeof(Pointer) <> sizeof(Int64) then
     Result := InternalFind(@key, sizeof(key), Value)
-  else {%H-}Result := InternalFind({%H-}Pointer(key), sizeof(key), Value);
+  else
+    {%H-}Result := InternalFind({%H-}Pointer(key), sizeof(key), Value);
 end;
 
 function TIntegerHashTrie.Find(key : Cardinal): Boolean;
@@ -196,6 +206,8 @@ function TIntegerHashTrie.InternalAdd(key: Pointer; KeySize: Cardinal; Value:
 var
   kvp : TKeyValuePair;
 begin
+  CheckKeySize(KeySize);
+  FKeySize := KeySize;
   kvp.Key := key;
   kvp.Value := Value;
   kvp.KeySize := KeySize;
@@ -209,25 +221,30 @@ var
   AChildIndex : Byte;
   HashTrieNode : PHashTrieNode;
 begin
+  CheckKeySize(KeySize);
   kvp := inherited InternalFind(key, KeySize, HashTrieNode, AChildIndex);
   Result := kvp <> nil;
   if Result then
     Value := kvp^.Value
-  else Value := nil;
+  else
+    Value := nil;
 end;
 
 function TIntegerHashTrie.Remove(key: Cardinal): Boolean;
 begin
+  CheckKeySize(sizeof(key));
   Result := inherited Remove({%H-}Pointer(key), sizeof(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Word): Boolean;
 begin
+  CheckKeySize(sizeof(key));
   Result := inherited Remove({%H-}Pointer(key), sizeof(key));
 end;
 
 function TIntegerHashTrie.Remove(key: Int64): Boolean;
 begin
+  CheckKeySize(sizeof(key));
   if sizeof(Pointer) <> sizeof(Int64) then
     Result := inherited Remove(@key, sizeof(key))
   else {%H-}Result := inherited Remove({%H-}Pointer(key), sizeof(key));
@@ -238,6 +255,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out
 var
   kvp : PKeyValuePair;
 begin
+  CheckKeySize(sizeof(Key));
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
@@ -260,6 +278,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out key: Word;
 var
   kvp : PKeyValuePair;
 begin
+  CheckKeySize(sizeof(Key));
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
@@ -282,6 +301,7 @@ function TIntegerHashTrie.Next(var AIterator: THashTrieIterator; out
 var
   kvp : PKeyValuePair;
 begin
+  CheckKeySize(sizeof(Key));
   kvp := inherited Next(AIterator);
   if kvp <> nil then
   begin
@@ -307,6 +327,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
@@ -321,6 +342,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
@@ -335,6 +357,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
@@ -349,6 +372,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
@@ -363,6 +387,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
@@ -377,6 +402,7 @@ var
   Value : Pointer;
   Done : Boolean;
 begin
+  CheckKeySize(sizeof(Key));
   InitIterator(It);
   Done := False;
   while (not Done) and Next(It, Key, Value) do
