@@ -63,6 +63,7 @@ type
     procedure AddFromTestDataFile;
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddRemoveAndReAddMultipleTimes;
     procedure TestAddSeveralAndFind;
     procedure TestAddReplaceAndFind;
     procedure TestAddAndTraverse;
@@ -388,6 +389,20 @@ begin
     exit;
   FStrHashTrie.Pack;
   FStrHashTrie.Free;
+end;
+
+procedure TStringHashTrieTest.TestAddRemoveAndReAddMultipleTimes;
+var
+  Value : Pointer;
+  i : integer;
+begin
+  for i := 1 to 200 do
+  begin
+    FStrHashTrie.Add('Hello World');
+    Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+    FStrHashTrie.Remove('Hello World');
+    Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  end;
 end;
 
 procedure TStringHashTrieTest.TestAddSeveralAndFind;
