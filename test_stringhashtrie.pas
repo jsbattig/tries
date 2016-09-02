@@ -107,6 +107,8 @@ var
   List : TStringList;
   Found : Boolean;
 begin
+  if not FileExists('..\..\..\GUIDs.txt') then
+    exit;
   for j := 0 to 2 do
   begin
     case j of
@@ -172,6 +174,9 @@ var
   List : TStringList;
   i, j, k : integer;
 begin
+  if (not FileExists('..\..\..\TestData.txt')) or
+     (not FileExists('..\..\..\TestData_2.txt')) then
+    exit;
   List := TStringList.Create;
   try
     for k := 1 to 50 do
