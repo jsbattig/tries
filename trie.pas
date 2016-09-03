@@ -344,7 +344,7 @@ var
   var
     i, _ChildIndex : Integer;
   begin
-    for i := low(ChildrenBackup) to high(ChildrenBackup) do
+    for i := 0 to ChildrenPerBucket * AObjectSize do
       ChildrenBackup[i] := 0;
     for i := 0 to BitFieldIndex - 1 do
     begin
@@ -358,6 +358,8 @@ var
     end;
   end;
 begin
+  Assert(LeafSize >= SizeOf(Pointer), 'LeafSize should be >= than SizeOf(Pointer)');
+  SetLength(ChildrenBackup, ChildrenPerBucket * LeafSize);
   InitIterator(AIterator);
   while Next(AIterator, FTrieDepth - 1) do
   begin
@@ -367,7 +369,6 @@ begin
       if AIterator.Level = FLastMidBranchNode + 1 then
         AObjectSize := LeafSize
       else AObjectSize := SizeOf(Pointer);
-      SetLength(ChildrenBackup, ChildrenPerBucket * AObjectSize);
       for BitFieldIndex := 0 to ChildrenPerBucket - 1 do
         if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], BitFieldIndex) then
         begin
