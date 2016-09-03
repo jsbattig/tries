@@ -62,7 +62,9 @@ type
     Base : TTrieBaseNode;
   end;
 
-  TTrieLeafNodeArray = array[0..ChildrenPerBucket - 1] of Byte;
+  TByteArray = array[0..0] of Byte;
+  PByteArray = ^TByteArray;
+  TTrieLeafNodeArray = TByteArray;
   PTrieLeafNodeArray = ^TTrieLeafNodeArray;
 
 type

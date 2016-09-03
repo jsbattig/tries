@@ -59,8 +59,11 @@ type
         TObject; var Done: Boolean);
     {$ENDIF}
   published
+    procedure Add15KGUIDsRemoveHalfPackAndFindEachOne;
+    procedure AddFromTestDataFile;
     procedure TestCreate;
     procedure TestAddAndFind;
+    procedure TestAddRemoveAndReAddMultipleTimes;
     procedure TestAddSeveralAndFind;
     procedure TestAddReplaceAndFind;
     procedure TestAddAndTraverse;
@@ -88,12 +91,134 @@ type
     procedure TestAddIterateAndFindManyEntriesHash32;
     procedure TestRemoveAndPack;
     {$ENDIF}
+    procedure TestStressRemoveAndPack;
   end;
 
 implementation
 
 uses
   Hash_Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
+
+procedure TStringHashTrieTest.Add15KGUIDsRemoveHalfPackAndFindEachOne;
+const
+  Loops = 15000;
+  Scenario : array[0..2] of Integer = (2, 3740, 14998);
+var
+  i, j : integer;
+  List : TStringList;
+  Found : Boolean;
+begin
+  if not FileExists('..\..\..\GUIDs.txt') then
+    exit;
+  for j := 0 to 2 do
+  begin
+    case j of
+      0 : ; // use default FStrHashTrie
+      1 :
+      begin
+        FStrHashTrie.Free;
+        FStrHashTrie := TStringHashTrie.Create(16, True);
+      end;
+      2 :
+      begin
+        FStrHashTrie.Free;
+        FStrHashTrie := TStringHashTrie.Create(32, False);
+      end;
+    end;
+    List := TStringList.Create;
+    try
+      List.LoadFromFile('..\..\..\GUIDs.txt');
+      for i := 1 to Loops do
+      begin
+        Check(FStrHashTrie.Add(List[i - 1]), 'Adding item');
+      end;
+      for i := 1 to Loops do
+      begin
+        Check(FStrHashTrie.Find(List[i - 1]), Format('First find test %d', [i - 1]));
+      end;
+      for i := 1 to Loops do
+      begin
+        Check(FStrHashTrie.Find(List[i - 1]), Format('Second find test %d', [i - 1]));
+        if i mod 2 = 0 then
+          Check(FStrHashTrie.Remove(List[i - 1]), 'Removing item');
+        Check(FStrHashTrie.Find(List[Scenario[j]]), Format('Missing item %d after removing item %d', [Scenario[j], i - 1]));
+      end;
+      FStrHashTrie.Pack;
+      Check(FStrHashTrie.Find(List[Scenario[j]]), Format('Missing item %d after pack', [Scenario[j]]));
+      for i := 1 to Loops do
+      begin
+        Found := FStrHashTrie.Find(List[i - 1]);
+        Check(((i mod 2 = 0) and (not Found)) or ((i mod 2 <> 0) and Found));
+      end;
+      for i := 1 to Loops do
+      begin
+        if i mod 2 = 0 then
+        begin
+          Check(FStrHashTrie.Find(List[Scenario[j]]), Format('Missing item %d before adding item %d', [Scenario[j], i - 1]));
+          Check(FStrHashTrie.Add(List[i - 1]), Format('Adding again item %d', [i - 1]));
+          Check(FStrHashTrie.Find(List[Scenario[j]]), Format('Missing item %d after adding item %d', [Scenario[j], i - 1]));
+        end;
+      end;
+      Check(FStrHashTrie.Find(List[3740]), Format('Missing item %d after adding items', [Scenario[j]]));
+      for i := 1 to Loops do
+      begin
+        Check(FStrHashTrie.Find(List[i - 1]), Format('Find after re-adding %d', [i - 1]));
+      end;
+    finally
+      List.Free;
+    end;
+  end;
+end;
+
+procedure TStringHashTrieTest.AddFromTestDataFile;
+var
+  List : TStringList;
+  i, j, k : integer;
+begin
+  if (not FileExists('..\..\..\TestData.txt')) or
+     (not FileExists('..\..\..\TestData_2.txt')) then
+    exit;
+  List := TStringList.Create;
+  try
+    for k := 1 to 50 do
+      for j := 0 to 3 do
+      begin
+        if j <= 1 then
+          List.LoadFromFile('..\..\..\TestData.txt')
+        else
+          List.LoadFromFile('..\..\..\TestData_2.txt');
+        if j in [1, 3] then
+        begin
+          FStrHashTrie.Free;
+          FStrHashTrie := TStringHashTrie.Create(16, True);
+        end;
+        FStrHashTrie.AutoFreeValue := True;
+        FStrHashTrie.AutoFreeValueMode := afmFree;
+        for i := 0 to List.Count - 1 do
+          FStrHashTrie.Add(List[i], TObject.Create);
+        for i := 0 to List.Count - 1 do
+          Check(FStrHashTrie.Find(List[i]));
+        for i := 0 to List.Count - 1 do
+          if i mod k = 0 then
+          begin
+            Check(FStrHashTrie.Find(List[i]), Format('Element #%d "%s" not found. k=%d', [i, List[i], k]));
+            Check(FStrHashTrie.Remove(List[i]), Format('Error removing element #%d "%s"', [i, List[i]]));
+          end;
+        FStrHashTrie.Pack;  
+        for i := 0 to List.Count - 1 do
+          if i mod k = 0 then
+          begin
+            Check(not FStrHashTrie.Find(List[i]), Format('Element #%d "%s" found?', [i, List[i]]));
+            Check(FStrHashTrie.Add(List[i], TObject.Create), Format('Element #%d "%s" re added', [i, List[i]]));
+            Check(FStrHashTrie.Find(List[i]), Format('Element #%d "%s" not found?', [i, List[i]]));
+          end;
+        for i := 0 to List.Count - 1 do
+          Check(FStrHashTrie.Find(List[i]));
+      end;
+  finally
+    List.Free;
+  end;
+end;
 
 procedure TStringHashTrieTest.TestCreate;
 begin
@@ -232,6 +357,8 @@ begin
   FStrHashTrie.AutoFreeValueMode := afmFree;
   Obj := TObject.Create;
   FStrHashTrie.Add('Hello World', Obj);
+  Obj := TObject.Create;
+  FStrHashTrie.Add('Hello World', Obj);
   FStrHashTrie.Clear;
 end;
 
@@ -258,7 +385,24 @@ end;
 
 procedure TStringHashTrieTest.TearDown;
 begin
+  if FStrHashTrie = nil then
+    exit;
+  FStrHashTrie.Pack;
   FStrHashTrie.Free;
+end;
+
+procedure TStringHashTrieTest.TestAddRemoveAndReAddMultipleTimes;
+var
+  Value : Pointer;
+  i : integer;
+begin
+  for i := 1 to 200 do
+  begin
+    FStrHashTrie.Add('Hello World');
+    Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+    FStrHashTrie.Remove('Hello World');
+    Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  end;
 end;
 
 procedure TStringHashTrieTest.TestAddSeveralAndFind;
@@ -548,6 +692,30 @@ begin
   Check(Data = TObject(Self), 'Item found doesn''t match expected value');
 end;
 {$ENDIF}
+
+procedure TStringHashTrieTest.TestStressRemoveAndPack;
+var
+  s : AnsiString;
+  i, k : Integer;
+begin
+  for k := 0 to 1 do
+    begin
+      case k of
+        0 : { keep going };
+        1 : FStrHashTrie := TStringHashTrie.Create(16, True);  
+      end;
+      for i := 0 to 100000 - 1 do
+      begin
+        s := Format('%d Hello %d', [Random(10000), Random(10000)]);
+        FStrHashTrie.Add(s);
+        if i mod 10 = 0 then
+          FStrHashTrie.Remove(s);
+        if i mod 100 = 0 then
+          FStrHashTrie.Pack;
+      end;
+      FreeAndNil(FStrHashTrie);
+    end;
+end;
 
 initialization
   {$IFDEF FPC}
