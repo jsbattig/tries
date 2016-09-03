@@ -46,7 +46,7 @@ uses
 type
   TIntegerHashTrie_FunctionalTest = class(TIntegerHashTrie)
   protected
-    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); override;
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; {%H-}KeySize: Cardinal; {%H-}ASeed: _Int64; {%H-}AHashSize: Byte); override;
   end;
 
 procedure TIntegerHashTrieTest.TestCreateIntegerHashTrie;
@@ -168,7 +168,13 @@ begin
     for j := 0 to 10 do
       for i := 105 to 200 do
       begin
-        h.Remove(i * j * 10 + i - 100);
+        {$IFDEF FPC}
+        {$HINTS OFF}
+        {$ENDIF}
+        h.Remove(Cardinal(i * j * 10 + i - 100));
+        {$IFDEF FPC}
+        {$HINTS ON}
+        {$ENDIF}
         h.Pack;
         h.InitIterator(Iter);
         while h.Next(Iter, k, v) do;
@@ -237,11 +243,11 @@ procedure TIntegerHashTrie_FunctionalTest.CalcHash(out Hash: THashRecord; key: P
 var
   minus : Integer;
 begin
-  if (Integer(Key) mod 7 = 0) or (Integer(Key) mod 9 = 0) then
+  if ({%H-}Integer(Key) mod 7 = 0) or ({%H-}Integer(Key) mod 9 = 0) then
     minus := 1
   else minus := 0;
-  Hash.Hash64 := Integer(key) div 10;
-  Hash.Hash16_3 := Integer(key) div 2 - minus;
+  Hash.Hash64 := {%H-}Integer(key) div 10;
+  Hash.Hash16_3 := {%H-}Integer(key) div 2 - minus;
 end;
 
 initialization
