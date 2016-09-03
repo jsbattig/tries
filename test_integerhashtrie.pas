@@ -35,12 +35,19 @@ type
     procedure TestIterate32;
     procedure TestIterate16;
     procedure TestIterate64;
+    procedure TestIntegerHashTrieCodePaths;
   end;
 
 implementation
 
 uses
-  Hash_Trie;
+  hashedcontainer, Hash_Trie;
+
+type
+  TIntegerHashTrie_FunctionalTest = class(TIntegerHashTrie)
+  protected
+    procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte); override;
+  end;
 
 procedure TIntegerHashTrieTest.TestCreateIntegerHashTrie;
 begin
@@ -146,10 +153,34 @@ begin
   Check(FIntHashTrie.Find(Cardinal(0), Value), 'Zero should be allowed');
 end;
 
+procedure TIntegerHashTrieTest.TestIntegerHashTrieCodePaths;
+var
+  h : TIntegerHashTrie_FunctionalTest;
+  i, j : Cardinal;
+  Iter : THashTrieIterator;
+  k : Cardinal;
+  v : Pointer;
+begin
+  h := TIntegerHashTrie_FunctionalTest.Create(32);
+  try
+    for i := 1000 to 20000 do
+      h.Add(i);
+    for j := 0 to 10 do
+      for i := 105 to 200 do
+      begin
+        h.Remove(i * j * 10 + i - 100);
+        h.Pack;
+        h.InitIterator(Iter);
+        while h.Next(Iter, k, v) do;
+      end;
+  finally
+    h.Free;
+  end;
+end;
+
 procedure TIntegerHashTrieTest.TestIterate32;
 var
   Key : Cardinal;
-  Key16 : Word;
   Value : pointer;
   It : THashTrieIterator;
 begin
@@ -161,17 +192,11 @@ begin
   CheckEquals(1, Key, 'Key returned from Next should be  = 1');
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
-  FIntHashTrie.InitIterator(It);
-  Check(FIntHashTrie.Next(It, Key16, Value), 'First call to Next should return True');
-  CheckEquals(1, Key16, 'Key returned from Next should be  = 1');
-  Check(Value = Pointer(Self), 'Value returned from Next should be Self');
-  Check(not FIntHashTrie.Next(It, Key16, Value), 'Second call to Next should return False');
-end;
+ end;
 
 procedure TIntegerHashTrieTest.TestIterate16;
 var
   Key : Word;
-  Key32 : Cardinal;
   Value : pointer;
   It : THashTrieIterator;
 begin
@@ -183,17 +208,11 @@ begin
   CheckEquals(1, Key, 'Key returned from Next should be  = 1');
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
-  FIntHashTrie.InitIterator(It);
-  Check(FIntHashTrie.Next(It, Key32, Value), 'First call to Next should return True');
-  CheckEquals(1, Key32, 'Key returned from Next should be  = 1');
-  Check(Value = Pointer(Self), 'Value returned from Next should be Self');
-  Check(not FIntHashTrie.Next(It, Key32, Value), 'Second call to Next should return False');
 end;
 
 procedure TIntegerHashTrieTest.TestIterate64;
 var
   Key : Int64;
-  Key32 : Cardinal;
   Value : pointer;
   It : THashTrieIterator;
 begin
@@ -205,11 +224,6 @@ begin
   CheckEquals(1, Key, 'Key returned from Next should be  = 1');
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
-  FIntHashTrie.InitIterator(It);
-  Check(FIntHashTrie.Next(It, Key32, Value), 'First call to Next should return True');
-  CheckEquals(1, Key32, 'Key returned from Next should be  = 1');
-  Check(Value = Pointer(Self), 'Value returned from Next should be Self');
-  Check(not FIntHashTrie.Next(It, Key32, Value), 'Second call to Next should return False');
 end;
 
 procedure TIntegerHashTrieTest.TraverseMeth(UserData: Pointer; Value: integer;
@@ -219,6 +233,17 @@ begin
   Check(Data = TObject(Self), 'Value should be equals to Self');
 end;
 
+procedure TIntegerHashTrie_FunctionalTest.CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal; ASeed: _Int64; AHashSize: Byte);
+var
+  minus : Integer;
+begin
+  if (Integer(Key) mod 7 = 0) or (Integer(Key) mod 9 = 0) then
+    minus := 1
+  else minus := 0;
+  Hash.Hash64 := Integer(key) div 10;
+  Hash.Hash16_3 := Integer(key) div 2 - minus;
+end;
+
 initialization
   {$IFDEF FPC}
   RegisterTest(TIntegerHashTrieTest);
@@ -226,4 +251,5 @@ initialization
   RegisterTest(TIntegerHashTrieTest.Suite);
   {$ENDIF}
 end.
+
 

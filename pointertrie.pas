@@ -20,6 +20,50 @@
   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
   OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
   SOFTWARE.
+
+
+  
+  TPointerTrie
+
+ Example representation of trie with two
+ 16 bit values: $348C and $45B5
+
+ Notice that our PointerTrie depth is 4 levels because the Pointer size is 16 bits.
+ We can store up to 4 bits per level with our structure.
+
+ The top path stores value $348C and the bottom path $45B5
+
+                               +---------------------+
+                               |                     |
++----------------+             | +----------------+  |            +----------------+            +----------------+
+|ChildrenCount| 2|             |0|ChildrenCount| 1|  |            |ChildrenCount| 1|            |ChildrenCount| 0|
++----------------+             | +----------------+  |            +----------------+            +----------------+
+|Busy         | D|             | |Busy         | 8|  |            |Busy         | 4|            |Busy         | 3|
++----------------+             | +-------------+--+  |            +-------------+--+            +-------------+--+
+|ChildIndex      |             | |ChildIndex      |  |            |ChildIndex      |
+|  +  +  +  +    |             | |  +  +  +  +    |  |            |  +  +  +  +    |               ^
+|  | 1|  |  |    |             | |  |  |  |  |    |  |            | 0|  |  |  |    |               |
+|  |  |  |  |    |             | | 0|  |  |  |    |  |            |  |  |  |  |    |               |
+| 0|  |  |  |    |             | |  |  |  |  |    |  |            |  |  |  |  |    |               |
++-----+--+--+----+             | +--+--+--+--+----+  |            +--+--+--+--+----+               |
+|Children      |-------------> | |Children      |---------------> |Children      |-----------------+
++----------------+             | +----------------+  |            +----------------+
+                               |1|ChildrenCount| 1|  |
+                               | +----------------+  |
+                               | |Busy         | B|  |            +----------------+            +----------------+
+                               | +----------------+  |            |ChildrenCount| 1|            |ChildrenCount| 0|
+                               | |ChildIndex      |  |            +----------------+            +----------------+
+                               | |  +  +  +  +    |  |            |Busy         | 5|            |Busy         | 4|
+                               | |  |  |  |  |    |  |            +-------------+--+            +-------------+--+
+                               | |  |  |  | 0|    |  |            |ChildIndex      |
+                               | |  |  |  |  |    |  |            |  +  +  +  +    |                ^
+                               | +--+--+--+--+----+  |            | 0|  |  |  |    |                |
+                               | |Children      |---------------> |  |  |  |  |    |                |
+                               | +----------------+  |            |  |  |  |  |    |                |
+                               |                     |            +--+--+--+--+----+                |
+                               +---------------------+            |Children      |------------------+
+                                                                  +----------------+
+
 *)
 
 unit PointerTrie;

@@ -34,6 +34,8 @@
     <DCC_UNIT_PLATFORM>False</DCC_UNIT_PLATFORM>
     <DCC_UNIT_DEPRECATED>False</DCC_UNIT_DEPRECATED>
     <DCC_UNIT_EXPERIMENTAL>False</DCC_UNIT_EXPERIMENTAL>
+    <DCC_DebugInfoInExe>True</DCC_DebugInfoInExe>
+    <DCC_DebugVN>True</DCC_DebugVN>
   </PropertyGroup>
   <ProjectExtensions>
     <Borland.Personality>Delphi.Personality</Borland.Personality>
