@@ -344,8 +344,14 @@ var
   var
     i, _ChildIndex : Integer;
   begin
-    for i := 0 to ChildrenPerBucket * AObjectSize do
+    {$IFDEF FPC}
+    {$HINTS OFF}
+    {$ENDIF}
+    for i := 0 to ChildrenPerBucket * AObjectSize - 1 do
       ChildrenBackup[i] := 0;
+    {$IFDEF FPC}
+    {$HINTS OFF}
+    {$ENDIF}
     for i := 0 to BitFieldIndex - 1 do
     begin
       if GetBusyIndicator(AIterator.NodeStack[AIterator.Level], i) then
