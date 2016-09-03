@@ -264,6 +264,7 @@ begin
   begin
     ChildIndex := Node^.Base.ChildrenCount;
     inc(Node^.Base.ChildrenCount);
+    Assert(Node^.Base.ChildrenCount <= ChildrenPerBucket, 'Node^.Base.ChildrenCount must be equal or lesser then ChildrenPerBucket');
     SetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1), ChildIndex);
     ReallocMem(Node^.Children, Node^.Base.ChildrenCount * sizeof(Pointer));
     PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
@@ -391,7 +392,7 @@ var
   HashTrieNode : PHashTrieNode;
   TreeHash : THashRecord;
   Hash : Word;
-  procedure FindSmallestNode;
+  procedure FindSmallestNodeOnRight;
   var
     ANode : PKeyValuePairNode;
   begin
@@ -432,20 +433,24 @@ begin
         CompareKeys(Node^.KVP.Key, Node^.KVP.KeySize, key, KeySize) then
       begin
         SmallestNode := nil;
-        if (Node^.Left <> nil) and (Node^.Right <> nil) and (Node^.Next = nil) then
-          FindSmallestNode
-        else if (Node^.Left = nil) and (Node^.Next = nil) and (Node^.Right <> nil) then
-          ParentNodePtr^ := Node^.Right
-        else if (Node^.Left <> nil) and (Node^.Next = nil) and (Node^.Right = nil) then
-          ParentNodePtr^ := Node^.Left
-        else if (Node^.Left = nil) and (Node^.Next = nil) and (Node^.Right = nil) then
-          ParentNodePtr^ := nil
-        else if Node^.Next <> nil then
+        if Node^.Next <> nil then
         begin
+          // There's more nodes with the same exact hash. We will pull up
+          // the next node in the linked list of same exact hash nodes
           ParentNodePtr^ := Node^.Next;
           Node^.Next^.Left := Node^.Left;
           Node^.Next^.Right := Node^.Right;
-        end;
+        end
+        else if (Node^.Left <> nil) and (Node^.Right <> nil) then
+          FindSmallestNodeOnRight // Nodes left and right, find smallest node on right side
+        // Following cases are the "easy" cases where only one node left or right
+        // is connected to a subtree
+        else if (Node^.Left = nil) and (Node^.Right <> nil) then
+          ParentNodePtr^ := Node^.Right
+        else if (Node^.Left <> nil) and (Node^.Right = nil) then
+          ParentNodePtr^ := Node^.Left
+        else if (Node^.Left = nil) and (Node^.Right = nil) then
+          ParentNodePtr^ := nil; // Removing a terminal node with no linked list
         FreeKey(Node^.KVP.Key, Node^.KVP.KeySize);
         if Node^.KVP.Value <> nil then        
           FreeValue(Node^.KVP.Value);
@@ -453,6 +458,10 @@ begin
         begin
           if SmallestNode <> Node^.Right then
           begin
+            // When the smallest node is any other node than the one on the immediate
+            // right of the one being removed, we will copy the contents of the smallest
+            // node to the actual node being "removed", adjust some pointers and really
+            // remove the smalles node
             SmallestNodeParent^.Left := SmallestNode^.Right;
             Node^.KVP := SmallestNode^.KVP;
             Node^.Next := SmallestNode^.Next;
@@ -460,7 +469,14 @@ begin
           end
           else
           begin
+            // When the smallest node is the one on the immediate right, we will
+            // connect the parent of the node being removed to the one on the immediate
+            // right, connect this one to the whole left branch of the one being removed
+            // and then dealloc the node being removed.
+            // We can do this connection to the left pointer of the node to the right
+            // because we know this node doesn't have any tree on its left by definition
             ParentNodePtr^ := Node^.Right;
+            Assert(Node^.Right^.Left = nil, 'Node^.Right^.Left must be nil');
             Node^.Right^.Left := Node^.Left;
             trieAllocators.DeAlloc(Node);
           end;
@@ -484,6 +500,8 @@ begin
     begin
       ParentNodePtr := @Node^.Next;
       Node := Node^.Next;
+      Assert(Node^.Left = nil, 'Node linked list present. Node^.Left must be nil');
+      Assert(Node^.Right = nil, 'Node linked list present. Node^.Right must be nil');
     end;
   end;
 end;
