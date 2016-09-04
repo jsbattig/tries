@@ -102,7 +102,7 @@ uses
 procedure TStringHashTrieTest.Add15KGUIDsRemoveHalfPackAndFindEachOne;
 const
   Loops = 15000;
-  Scenario : array[0..2] of Integer = (2, 3740, 14998);
+  Scenario : array[0..3] of Integer = (2, 3740, 14998, 2);
 var
   i, j : integer;
   List : TStringList;
@@ -110,7 +110,7 @@ var
 begin
   if not FileExists('..\..\..\GUIDs.txt') then
     exit;
-  for j := 0 to 2 do
+  for j := 0 to 3 do
   begin
     case j of
       0 : ; // use default FStrHashTrie
@@ -123,6 +123,11 @@ begin
       begin
         FStrHashTrie.Free;
         FStrHashTrie := TStringHashTrie.Create(32, False);
+      end;
+      3 :
+      begin
+        FStrHashTrie.Free;
+        FStrHashTrie := TStringHashTrie.Create(20, True);
       end;
     end;
     List := TStringList.Create;
