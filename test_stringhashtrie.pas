@@ -91,6 +91,7 @@ type
     procedure TestAddIterateAndFindManyEntriesHash32;
     procedure TestRemoveAndPack;
     {$ENDIF}
+    procedure TestAddIterateRemoving;
     procedure TestStressRemoveAndPack;
   end;
 
@@ -448,7 +449,7 @@ var
   Value : Pointer;
 begin
   FStrHashTrie.CaseInsensitive := True;
-  FStrHashTrie.Add(AnsiString('Hello World'), Self);
+  FStrHashTrie.Add(AnsiString('Hello World'), Pointer(Self));
   Check(FStrHashTrie.Find(AnsiString('hello world'), Value), 'Item not found');
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
@@ -613,6 +614,32 @@ begin
     FStrHashTrie.Find(AnsiString(IntToStr(i)) + 'hello');
 end;
 
+procedure TStringHashTrieTest.TestAddIterateRemoving;
+const
+  LOOPS = 100000;
+var
+  i, cnt : integer;
+  GUID : TGUID;
+  It : THashTrieIterator;
+  s : AnsiString;
+  v : Pointer;
+begin
+  for i := 1 to LOOPS do
+  begin
+    CreateGUID(GUID);
+    FStrHashTrie.Add(GUIDToString(GUID) + '-' + IntToStr(i));
+  end;
+  FStrHashTrie.InitIterator(It);
+  cnt := 0;
+  while FStrHashTrie.Next(It, s, v) do
+  begin
+    inc(cnt);
+    FStrHashTrie.Remove(s);
+  end;
+  CheckEquals(LOOPS, cnt, 'Count of loops must match');
+  FStrHashTrie.Pack;
+end;
+
 {$IFDEF UNICODE}
 procedure TStringHashTrieTest.TestAddAndTraverseUnicode;
 begin
@@ -711,7 +738,7 @@ begin
       end;
       for i := 0 to 100000 - 1 do
       begin
-        s := Format('%d Hello %d', [Random(10000), Random(10000)]);
+        s := AnsiString(Format('%d Hello %d', [Random(10000), Random(10000)]));
         FStrHashTrie.Add(s);
         if i mod 10 = 0 then
           FStrHashTrie.Remove(s);
