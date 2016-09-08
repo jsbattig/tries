@@ -61,7 +61,7 @@ type
       4 : (Hash16_1, Hash16_2, Hash16_3, Hash16_4 : Word);
   end;
 
-  TAutoFreeMode = (afmFree, afmFreeMem, afmAnsiStrDispose, afmReleaseInterface);
+  TAutoFreeMode = (afmFree, afmFreeMem, afmStrDispose, afmReleaseInterface);
   TDuplicatesMode = (dmNotAllow, dmAllowed, dmReplaceExisting);
 
   { THashTrie }
@@ -221,7 +221,7 @@ begin
     case FAutoFreeValueMode of
       afmFree             : TObject(value).Free;
       afmFreeMem          : FreeMem(value);
-      afmAnsiStrDispose   : {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(PAnsiChar(value));
+      afmStrDispose   : {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(PAnsiChar(value));
       afmReleaseInterface : IUnknown(Value)._Release;
     end;
 end;
