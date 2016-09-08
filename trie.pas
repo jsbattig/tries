@@ -127,6 +127,9 @@ type
 
 implementation
 
+uses
+  Math;
+
 resourcestring
   SInternalErrorCheckParametersPassedToConstructor = 'Internal error: check parameters passed to constructor TTrie.Create()';
   STR_RANDOMACCESSNOTENABLED = 'Random access not enabled';
@@ -364,8 +367,7 @@ var
     end;
   end;
 begin
-  Assert(LeafSize >= SizeOf(Pointer), 'LeafSize should be >= than SizeOf(Pointer)');
-  SetLength(ChildrenBackup, ChildrenPerBucket * LeafSize);
+  SetLength(ChildrenBackup, ChildrenPerBucket * Max(LeafSize, SizeOf(Pointer)));
   InitIterator(AIterator);
   while Next(AIterator, FTrieDepth - 1) do
   begin
