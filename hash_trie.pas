@@ -72,6 +72,7 @@ type
     FContainer : THashedContainer;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
+    FIteratorInvalidated: Boolean;
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
     FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
     FTrieDepth: Byte;
@@ -126,6 +127,7 @@ uses
 resourcestring
   SInternalErrorUseHashTableWithHashSize = 'Internal error: if AUseHashTable is True then AHashSize must be <= 20 calling constructor THashTrie.Create()';
   SInternalErrorCheckParameterAHashSize = 'Internal error: check parameter AHashSize calling THashTrie.Create() constructor';
+  StrIteratorWasInvalidated = 'Iterator was invalidated with prior call to Remove(Key) method. Please use RemoveCurrentNode instead';
 
 function HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin
@@ -153,6 +155,7 @@ begin
   FContainer.OnInitLeaf := {$IFDEF FPC}@{$ENDIF}InitLeaf;
   FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _16KB div sizeof(TKeyValuePairNode));
   FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _16KB div sizeof(TKeyValuePairBacktrackNode));
+  FIteratorInvalidated := True;
 end;
 
 destructor THashTrie.Destroy;
@@ -440,6 +443,7 @@ begin
       begin
         RemoveKVPTreeNode(ParentNodePtr, Node);
         Result := True;
+        FIteratorInvalidated := True;
         exit;
       end;
     if Hash < Node^.KVP.Hash then
@@ -468,6 +472,7 @@ begin
   AIterator.BackTrack := nil;
   AIterator.CurNodeParent := nil;
   AIterator.CurNode := nil;
+  FIteratorInvalidated := False;
 end;
 
 {$IFDEF DEBUG}
@@ -543,6 +548,8 @@ var
   Node : PTrieBranchNode;
   KVPNode : PKeyValuePairNode;
 begin
+  if FIteratorInvalidated then
+    raise EHashTrie.Create(StrIteratorWasInvalidated);
   if AIterator.BackTrack <> nil then
   begin
     NextKVPTreeNode(AIterator);

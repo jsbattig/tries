@@ -91,7 +91,6 @@ type
     procedure TestAddIterateAndFindManyEntriesHash32;
     procedure TestRemoveAndPack;
     {$ENDIF}
-    procedure TestAddIterateRemoving;
     procedure TestAddIterateRemovingCurrentNode;
     procedure TestStressRemoveAndPack;
   end;
@@ -613,33 +612,6 @@ begin
     FStrHashTrie.Add(AnsiString(IntToStr(i)) + 'hello', Self);
   for i := 0 to Count - 1 do
     FStrHashTrie.Find(AnsiString(IntToStr(i)) + 'hello');
-end;
-
-procedure TStringHashTrieTest.TestAddIterateRemoving;
-const
-  LOOPS = 100000;
-var
-  i, cnt : integer;
-  GUID : TGUID;
-  It : THashTrieIterator;
-  s : AnsiString;
-  v : Pointer;
-begin
-  for i := 1 to LOOPS do
-  begin
-    CreateGUID(GUID);
-    FStrHashTrie.Add(GUIDToString(GUID) + '-' + IntToStr(i));
-  end;
-  FStrHashTrie.InitIterator(It);
-  cnt := 0;
-  while FStrHashTrie.Next(It, s, v) do
-  begin
-    inc(cnt);
-    FStrHashTrie.Remove(s);
-  end;
-  CheckEquals(LOOPS, cnt, 'Count of loops must match');
-  FStrHashTrie.Pack;
-  CheckEquals(0, FStrHashTrie.Count, 'There should be no nodes left');
 end;
 
 {$IFDEF UNICODE}

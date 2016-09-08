@@ -28,7 +28,6 @@ type
     procedure TestAddFindAndRemove32;
     procedure TestAddFindAndRemove16;
     procedure TestAddFindAndRemove64;
-    procedure TestAddIterateRemovingNumbers;
     procedure TestAddIterateRemovingCurrentNode;
     procedure TestAddReplaceAndFind;
     procedure TestAddSomeElements;
@@ -113,34 +112,6 @@ begin
   Check(Value = Pointer(Self), 'Value should be equals to Self');
   Check(FIntHashTrie.Remove(Key), 'Key was not found?');
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
-end;
-
-procedure TIntegerHashTrieTest.TestAddIterateRemovingNumbers;
-const
-  LOOPS = 100000;
-var
-  i, cnt, cnt2 : integer;
-  It : THashTrieIterator;
-  k : Cardinal;
-  v : Pointer;
-begin
-  FIntHashTrie := TIntegerHashTrie.Create(16);
-  cnt2 := 0;
-  for i := 1 to LOOPS do
-  begin
-    if FIntHashTrie.Add(Cardinal(Random(MaxInt))) then
-      inc(cnt2);
-  end;
-  cnt := 0;
-  FIntHashTrie.InitIterator(It);
-  while FIntHashTrie.Next(It, k, v) do
-  begin
-    FIntHashTrie.Remove(k);
-    inc(cnt);
-  end;
-  CheckEquals(cnt2, cnt, 'Count of loops must match');
-  FIntHashTrie.Pack;
-  CheckEquals(0, FIntHashTrie.Count, 'There should be no nodes left');
 end;
 
 procedure TIntegerHashTrieTest.TestAddIterateRemovingCurrentNode;
