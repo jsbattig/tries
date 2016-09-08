@@ -139,6 +139,7 @@ begin
   end;
   CheckEquals(cnt2, cnt, 'Count of loops must match');
   FIntHashTrie.Pack;
+  CheckEquals(0, FIntHashTrie.Count, 'There should be no nodes left');
 end;
 
 procedure TIntegerHashTrieTest.TestAddReplaceAndFind;

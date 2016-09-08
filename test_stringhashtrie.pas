@@ -638,6 +638,7 @@ begin
   end;
   CheckEquals(LOOPS, cnt, 'Count of loops must match');
   FStrHashTrie.Pack;
+  CheckEquals(0, FStrHashTrie.Count, 'There should be no nodes left');
 end;
 
 {$IFDEF UNICODE}
