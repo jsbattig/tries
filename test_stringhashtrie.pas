@@ -92,6 +92,8 @@ type
     procedure TestRemoveAndPack;
     {$ENDIF}
     procedure TestAddIterateRemovingCurrentNode;
+    procedure TestIterateWithInvalidIterator_Fails;
+    procedure TestIterateTryRemoveNonExistingNode_Success;
     procedure TestStressRemoveAndPack;
   end;
 
@@ -347,6 +349,7 @@ begin
   Check(FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
   CheckEquals('Hello World', AKey, 'AKey doesn''t match');
   Check(AValue = Pointer(Self), 'Value of AValue doesn''t match');
+  Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
   Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
 end;
 
@@ -702,6 +705,35 @@ begin
   CheckEquals(LOOPS, cnt, 'Count of loops must match');
   FStrHashTrie.Pack;
   CheckEquals(0, FStrHashTrie.Count, 'There should be no nodes left');
+end;
+
+procedure TStringHashTrieTest.TestIterateWithInvalidIterator_Fails;
+var
+  It : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  ExpectedException := EHashTrie;
+  FStrHashTrie.Add('Hello World');
+  FStrHashTrie.Add('Hello World2');
+  FStrHashTrie.InitIterator(It);
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
+  FStrHashTrie.Remove('Hello World');
+  FStrHashTrie.Next(It, AKey, AValue);
+end;
+
+procedure TStringHashTrieTest.TestIterateTryRemoveNonExistingNode_Success;
+var
+  It : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Add('Hello World');
+  FStrHashTrie.Add('Hello World2');
+  FStrHashTrie.InitIterator(It);
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
+  FStrHashTrie.Remove('Hello World3');
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'Second call should succeed');
 end;
 
 procedure TStringHashTrieTest.TestRemoveAndPack;
