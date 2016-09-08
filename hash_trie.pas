@@ -80,8 +80,9 @@ type
     {$ENDIF}
     function AddOrReplaceKVPTreeNode(var Root: PKeyValuePairNode; const kvp: TKeyValuePair): Boolean;
     procedure FreeKVPTreeNode(var CurNode: PKeyValuePairNode);
-    procedure NewBacktrackNode(var AIterator: THashTrieIterator; var Node:
-        PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
+    procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
+        PKeyValuePairNode; ParentNodePtr: PPKeyValuePairNode; NextMove:
+        TIteratorMovement = imLeft);
     function NewKVPTreeNode(const kvp: TKeyValuePair): PKeyValuePairNode;
     procedure NextKVPTreeNode(var AIterator: THashTrieIterator; AFreeNodes: Boolean = False);
     procedure RemoveKVPTreeNode(ParentNodePtr: PPKeyValuePairNode; Node: PKeyValuePairNode);
@@ -109,6 +110,7 @@ type
     procedure Clear;
     procedure InitIterator(out AIterator : THashTrieIterator);
     procedure DoneIterator(var AIterator : THashTrieIterator);
+    procedure RemoveCurrentNode(const AIterator : THashTrieIterator);
     procedure Pack;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
@@ -234,7 +236,7 @@ begin
       if ListNode  = nil then
         continue;
       InitIterator(AIterator);
-      NewBacktrackNode(AIterator, ListNode, imLeft);
+      NewBacktrackNode(AIterator, ListNode, @PHashTrieNodeArray(PHashTrieNode(ANode)^.Children)^[i]);
       repeat
         NextKVPTreeNode(AIterator, True);
       until AIterator.BackTrack = nil;
@@ -483,14 +485,15 @@ begin
 end;
 {$ENDIF}
 
-procedure THashTrie.NewBacktrackNode(var AIterator: THashTrieIterator; var
-    Node: PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
+procedure THashTrie.NewBacktrackNode(var AIterator: THashTrieIterator; Node:
+    PKeyValuePairNode; ParentNodePtr: PPKeyValuePairNode; NextMove:
+    TIteratorMovement = imLeft);
 var
   BacktrackNode : PKeyValuePairBacktrackNode;
 begin
   BacktrackNode := FKeyValuePairBacktrackNodeAllocator.Alloc;
   BacktrackNode^.Node := Node;
-  BacktrackNode^.NodeParent := @Node;
+  BacktrackNode^.NodeParent := ParentNodePtr;
   BacktrackNode^.Next := AIterator.BackTrack;
   if AIterator.Backtrack <> nil then
     AIterator.Backtrack^.NextMove := NextMove;
@@ -556,7 +559,7 @@ begin
     KVPNode := PHashTrieNodeArray(Node^.Children)^[AChildIndex];
     if KVPNode = nil then
       continue;
-    NewBacktrackNode(AIterator, KVPNode);
+    NewBacktrackNode(AIterator, KVPNode, @PHashTrieNodeArray(Node^.Children)^[AChildIndex]);
     NextKVPTreeNode(AIterator);
     Assert(AIterator.CurNode <> nil, 'AIterator.CurNode must be <> nil after call to NextKVPTreeNode() when KVPNode was <> nil');
     Result := @AIterator.CurNode^.KVP;
@@ -582,10 +585,10 @@ begin
     begin
       case AIterator.BackTrack^.NextMove of
         imLeft : if AIterator.BackTrack^.Node^.Left <> nil then
-            NewBacktrackNode(AIterator, AIterator.BackTrack^.Node^.Left, imNext)
+            NewBacktrackNode(AIterator, AIterator.BackTrack^.Node^.Left, @AIterator.BackTrack^.Node^.Left, imNext)
           else inc(AIterator.BackTrack^.NextMove);
         imNext : if AIterator.BackTrack^.Node^.Next <> nil then
-            NewBacktrackNode(AIterator, AIterator.BackTrack^.Node^.Next, imRight)
+            NewBacktrackNode(AIterator, AIterator.BackTrack^.Node^.Next, @AIterator.BackTrack^.Node^.Next, imRight)
           else inc(AIterator.BackTrack^.NextMove);
         imRight :
           begin
@@ -606,6 +609,11 @@ begin
     end;
   if AFreeNodes and (AIterator.CurNode <> nil) then
     FreeKVPTreeNode(AIterator.CurNode);
+end;
+
+procedure THashTrie.RemoveCurrentNode(const AIterator : THashTrieIterator);
+begin
+  RemoveKVPTreeNode(AIterator.CurNodeParent, AIterator.CurNode);
 end;
 
 procedure THashTrie.RemoveKVPTreeNode(ParentNodePtr: PPKeyValuePairNode; Node:

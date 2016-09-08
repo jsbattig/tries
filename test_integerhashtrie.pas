@@ -29,6 +29,7 @@ type
     procedure TestAddFindAndRemove16;
     procedure TestAddFindAndRemove64;
     procedure TestAddIterateRemovingNumbers;
+    procedure TestAddIterateRemovingCurrentNode;
     procedure TestAddReplaceAndFind;
     procedure TestAddSomeElements;
     procedure TestAddZeroKey;
@@ -135,6 +136,34 @@ begin
   while FIntHashTrie.Next(It, k, v) do
   begin
     FIntHashTrie.Remove(k);
+    inc(cnt);
+  end;
+  CheckEquals(cnt2, cnt, 'Count of loops must match');
+  FIntHashTrie.Pack;
+  CheckEquals(0, FIntHashTrie.Count, 'There should be no nodes left');
+end;
+
+procedure TIntegerHashTrieTest.TestAddIterateRemovingCurrentNode;
+const
+  LOOPS = 100000;
+var
+  i, cnt, cnt2 : integer;
+  It : THashTrieIterator;
+  k : Cardinal;
+  v : Pointer;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(16);
+  cnt2 := 0;
+  for i := 1 to LOOPS do
+  begin
+    if FIntHashTrie.Add(Cardinal(Random(MaxInt))) then
+      inc(cnt2);
+  end;
+  cnt := 0;
+  FIntHashTrie.InitIterator(It);
+  while FIntHashTrie.Next(It, k, v) do
+  begin
+    FIntHashTrie.RemoveCurrentNode(It);
     inc(cnt);
   end;
   CheckEquals(cnt2, cnt, 'Count of loops must match');

@@ -92,6 +92,7 @@ type
     procedure TestRemoveAndPack;
     {$ENDIF}
     procedure TestAddIterateRemoving;
+    procedure TestAddIterateRemovingCurrentNode;
     procedure TestStressRemoveAndPack;
   end;
 
@@ -702,6 +703,33 @@ begin
     inc(Cnt);
   end;
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
+end;
+
+procedure TStringHashTrieTest.TestAddIterateRemovingCurrentNode;
+const
+  LOOPS = 100000;
+var
+  i, cnt : integer;
+  GUID : TGUID;
+  It : THashTrieIterator;
+  s : AnsiString;
+  v : Pointer;
+begin
+  for i := 1 to LOOPS do
+  begin
+    CreateGUID(GUID);
+    FStrHashTrie.Add(GUIDToString(GUID) + '-' + IntToStr(i));
+  end;
+  FStrHashTrie.InitIterator(It);
+  cnt := 0;
+  while FStrHashTrie.Next(It, s, v) do
+  begin
+    inc(cnt);
+    FStrHashTrie.RemoveCurrentNode(It);
+  end;
+  CheckEquals(LOOPS, cnt, 'Count of loops must match');
+  FStrHashTrie.Pack;
+  CheckEquals(0, FStrHashTrie.Count, 'There should be no nodes left');
 end;
 
 procedure TStringHashTrieTest.TestRemoveAndPack;
