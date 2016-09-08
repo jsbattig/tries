@@ -30,6 +30,7 @@ type
   TIteratorMovement = (imLeft, imNext, imRight);
   PKeyValuePairBacktrackNode = ^TKeyValuePairBacktrackNode;
   TKeyValuePairBacktrackNode = record
+    NodeParent : PPKeyValuePairNode;
     Node : PKeyValuePairNode;
     NextMove : TIteratorMovement;
     Next : PKeyValuePairBacktrackNode;
@@ -43,6 +44,7 @@ type
 
   THashTrieIterator = record
     BackTrack : PKeyValuePairBacktrackNode;
+    CurNodeParent : PPKeyValuePairNode;
     CurNode : PKeyValuePairNode;
     case Integer of
       0 : (Base : THashedContainerIterator);
@@ -73,27 +75,25 @@ type
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
     FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
     FTrieDepth: Byte;
-    function AddOrReplaceNode(var Root: PKeyValuePairNode; const kvp:
-        TKeyValuePair): Boolean;
-    procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
-        PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
-    function NewKVPNode(const kvp: TKeyValuePair): PKeyValuePairNode;
-    procedure NextLeafTreeNode(var AIterator: THashTrieIterator; AFreeNodes:
-        Boolean = False);
     {$IFDEF DEBUG}
-    procedure InvalidateKVPNode(ANode : PKeyValuePairNode);
+    procedure InvalidateKVPTreeNode(ANode : PKeyValuePairNode);
     {$ENDIF}
-    procedure RemoveNode(ParentNodePtr: PPKeyValuePairNode; Node:
-        PKeyValuePairNode);
+    function AddOrReplaceKVPTreeNode(var Root: PKeyValuePairNode; const kvp: TKeyValuePair): Boolean;
+    procedure FreeKVPTreeNode(var CurNode: PKeyValuePairNode);
+    procedure NewBacktrackNode(var AIterator: THashTrieIterator; var Node:
+        PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
+    function NewKVPTreeNode(const kvp: TKeyValuePair): PKeyValuePairNode;
+    procedure NextKVPTreeNode(var AIterator: THashTrieIterator; AFreeNodes: Boolean = False);
+    procedure RemoveKVPTreeNode(ParentNodePtr: PPKeyValuePairNode; Node: PKeyValuePairNode);
   protected
     procedure InitLeaf(var Leaf); {$IFNDEF FPC} inline; {$ENDIF}
     procedure FreeKey({%H-}key: Pointer; {%H-}KeySize: Cardinal); virtual;
     procedure FreeValue({%H-}value : Pointer); virtual;
     function CompareKeys(key1: Pointer; KeySize1: Cardinal; key2: Pointer;
-        KeySize2: Cardinal): Boolean; virtual; abstract;
+                         KeySize2: Cardinal): Boolean; virtual; abstract;
     procedure FreeTrieNode(ANode : PTrieBaseNode; Level : Byte);
     procedure CalcHash(out Hash: THashRecord; key: Pointer; KeySize: Cardinal;
-        ASeed: _Int64; AHashSize: Byte); virtual;
+                       ASeed: _Int64; AHashSize: Byte); virtual;
     function Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word; virtual;
     function Hash32(key: Pointer; KeySize, {%H-}ASeed: Cardinal): Cardinal; virtual;
     function Hash64(key: Pointer; KeySize: Cardinal; ASeed: _Int64): Int64; virtual;
@@ -206,6 +206,7 @@ end;
 
 procedure THashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
 begin
+  // Descendants of this class may implement some key disposal if required
 end;
 
 procedure THashTrie.FreeValue(value: Pointer);
@@ -235,7 +236,7 @@ begin
       InitIterator(AIterator);
       NewBacktrackNode(AIterator, ListNode, imLeft);
       repeat
-        NextLeafTreeNode(AIterator, True);
+        NextKVPTreeNode(AIterator, True);
       until AIterator.BackTrack = nil;
     end;
     if PHashTrieNode(ANode)^.Base.ChildrenCount > 0 then
@@ -276,13 +277,13 @@ begin
     PHashTrieNodeArray(Node^.Children)^[ChildIndex] := nil;
   end
   else ChildIndex := GetChildIndex(PTrieBranchNode(Node), GetBitFieldIndex(Hash, TrieDepth - 1));
-  Result := AddOrReplaceNode(PHashTrieNodeArray(Node^.Children)^[ChildIndex], kvp);
+  Result := AddOrReplaceKVPTreeNode(PHashTrieNodeArray(Node^.Children)^[ChildIndex], kvp);
   if Result then
     inc(FCount);
 end;
 
-function THashTrie.AddOrReplaceNode(var Root: PKeyValuePairNode; const kvp:
-    TKeyValuePair): Boolean;
+function THashTrie.AddOrReplaceKVPTreeNode(var Root: PKeyValuePairNode; const
+    kvp: TKeyValuePair): Boolean;
 var
   Node, PrevNode : PKeyValuePairNode;
   WentRight : Boolean;
@@ -318,16 +319,16 @@ begin
         end
         else Node := Node^.Next;
       end;
-      PrevNode^.Next := NewKVPNode(kvp);
+      PrevNode^.Next := NewKVPTreeNode(kvp);
       Result := True;
       exit;
     end;
   end;
   if PrevNode <> nil then
     if WentRight then
-      PrevNode^.Right := NewKVPNode(kvp)
-    else PrevNode^.Left := NewKVPNode(kvp)
-  else Root := NewKVPNode(kvp);
+      PrevNode^.Right := NewKVPTreeNode(kvp)
+    else PrevNode^.Left := NewKVPTreeNode(kvp)
+  else Root := NewKVPTreeNode(kvp);
   Result := True;
 end;
 
@@ -348,6 +349,21 @@ begin
     trieAllocators.DeAlloc(TmpNode);
   end;
   AIterator.BackTrack := nil;
+end;
+
+procedure THashTrie.FreeKVPTreeNode(var CurNode: PKeyValuePairNode);
+var
+  kvp : PKeyValuePair;
+begin
+  kvp := @CurNode^.KVP;
+  FreeKey(kvp^.Key, kvp^.KeySize);
+  if kvp^.Value <> nil then
+    FreeValue(kvp^.Value);
+  {$IFDEF DEBUG}
+  InvalidateKVPTreeNode(CurNode);
+  {$ENDIF}
+  trieAllocators.DeAlloc(CurNode);
+  CurNode := nil;
 end;
 
 function THashTrie.InternalFind(key: Pointer; KeySize: Cardinal; out
@@ -420,7 +436,7 @@ begin
     if (Hash = Node^.KVP.Hash) and
         CompareKeys(Node^.KVP.Key, Node^.KVP.KeySize, key, KeySize) then
       begin
-        RemoveNode(ParentNodePtr, Node);
+        RemoveKVPTreeNode(ParentNodePtr, Node);
         Result := True;
         exit;
       end;
@@ -448,11 +464,12 @@ procedure THashTrie.InitIterator(out AIterator: THashTrieIterator);
 begin
   FContainer.InitIterator(AIterator.Base);
   AIterator.BackTrack := nil;
+  AIterator.CurNodeParent := nil;
   AIterator.CurNode := nil;
 end;
 
 {$IFDEF DEBUG}
-procedure THashTrie.InvalidateKVPNode(ANode : PKeyValuePairNode);
+procedure THashTrie.InvalidateKVPTreeNode(ANode : PKeyValuePairNode);
 begin
   {$IFNDEF CPUX64}
   ANode^.Left := Pointer($FEFEFEFE);
@@ -466,13 +483,14 @@ begin
 end;
 {$ENDIF}
 
-procedure THashTrie.NewBacktrackNode(var AIterator: THashTrieIterator; Node:
-    PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
+procedure THashTrie.NewBacktrackNode(var AIterator: THashTrieIterator; var
+    Node: PKeyValuePairNode; NextMove: TIteratorMovement = imLeft);
 var
   BacktrackNode : PKeyValuePairBacktrackNode;
 begin
   BacktrackNode := FKeyValuePairBacktrackNodeAllocator.Alloc;
   BacktrackNode^.Node := Node;
+  BacktrackNode^.NodeParent := @Node;
   BacktrackNode^.Next := AIterator.BackTrack;
   if AIterator.Backtrack <> nil then
     AIterator.Backtrack^.NextMove := NextMove;
@@ -480,7 +498,7 @@ begin
   BacktrackNode^.NextMove := imLeft;
 end;
 
-function THashTrie.NewKVPNode(const kvp: TKeyValuePair): PKeyValuePairNode;
+function THashTrie.NewKVPTreeNode(const kvp: TKeyValuePair): PKeyValuePairNode;
 begin
   Result := FKeyValuePairNodeAllocator.Alloc;
   Result^.KVP := kvp;
@@ -524,8 +542,8 @@ var
 begin
   if AIterator.BackTrack <> nil then
   begin
-    NextLeafTreeNode(AIterator);
-    Assert(AIterator.CurNode <> nil, 'If AIterator.BackTrack <> nil then AIterator.CurNode must be <> nil after call to NextLeafTreeNode()');
+    NextKVPTreeNode(AIterator);
+    Assert(AIterator.CurNode <> nil, 'If AIterator.BackTrack <> nil then AIterator.CurNode must be <> nil after call to NextKVPTreeNode()');
     KVPNode := AIterator.CurNode;
     Result := @KVPNode^.KVP;
     exit;
@@ -539,24 +557,23 @@ begin
     if KVPNode = nil then
       continue;
     NewBacktrackNode(AIterator, KVPNode);
-    NextLeafTreeNode(AIterator);
-    Assert(AIterator.CurNode <> nil, 'AIterator.CurNode must be <> nil after call to NextLeafTreeNode() when KVPNode was <> nil');
+    NextKVPTreeNode(AIterator);
+    Assert(AIterator.CurNode <> nil, 'AIterator.CurNode must be <> nil after call to NextKVPTreeNode() when KVPNode was <> nil');
     Result := @AIterator.CurNode^.KVP;
     exit;
   end;
   Result := nil;
 end;
 
-procedure THashTrie.NextLeafTreeNode(var AIterator: THashTrieIterator;
+procedure THashTrie.NextKVPTreeNode(var AIterator: THashTrieIterator;
     AFreeNodes: Boolean = False);
-var
-  kvp : PKeyValuePair;
   procedure MoveUp;
   var
     BacktrackNode : PKeyValuePairBacktrackNode;
   begin
     BacktrackNode := AIterator.BackTrack;
     AIterator.CurNode := BacktrackNode^.Node;
+    AIterator.CurNodeParent := BacktrackNode^.NodeParent;
     AIterator.BackTrack := BacktrackNode^.Next;
     trieAllocators.Dealloc(BacktrackNode);
   end;
@@ -578,6 +595,7 @@ begin
               // When unwinding it will go up to the parent of *this node* (that potentially
               // was removed during the iteration)
               AIterator.CurNode := AIterator.BackTrack^.Node;
+              AIterator.CurNodeParent := AIterator.BackTrack^.NodeParent;
               AIterator.BackTrack^.Node := AIterator.BackTrack^.Node^.Right;
               AIterator.BackTrack^.NextMove := imLeft;
             end
@@ -587,20 +605,10 @@ begin
       end;
     end;
   if AFreeNodes and (AIterator.CurNode <> nil) then
-    begin
-      kvp := @AIterator.CurNode^.KVP;
-      FreeKey(kvp^.Key, kvp^.KeySize);
-      if kvp^.Value <> nil then
-        FreeValue(kvp^.Value);
-      {$IFDEF DEBUG}
-      InvalidateKVPNode(AIterator.CurNode);
-      {$ENDIF}
-      trieAllocators.DeAlloc(AIterator.CurNode);
-      AIterator.CurNode := nil;
-    end;
+    FreeKVPTreeNode(AIterator.CurNode);
 end;
 
-procedure THashTrie.RemoveNode(ParentNodePtr: PPKeyValuePairNode; Node:
+procedure THashTrie.RemoveKVPTreeNode(ParentNodePtr: PPKeyValuePairNode; Node:
     PKeyValuePairNode);
 var
   SmallestNode, SmallestNodeParent : PKeyValuePairNode;
@@ -667,10 +675,10 @@ begin
       // We can do this connection to the left pointer of the node to the right
       // because we know this node doesn't have any tree on its left by definition
       ParentNodePtr^ := Node^.Right;
-      Assert(Node^.Right^.Left = nil, 'Node^.Right^.Left must be nil');
+      Assert(Node^.Right^.Left = nil, 'Node^.Right^.Left must be nil on this branch');
       Node^.Right^.Left := Node^.Left;
       {$IFDEF DEBUG}
-      InvalidateKVPNode(Node);
+      InvalidateKVPTreeNode(Node);
       {$ENDIF}
       trieAllocators.DeAlloc(Node);
     end;
