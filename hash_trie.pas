@@ -76,17 +76,18 @@ type
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
     FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
     FTrieDepth: Byte;
-    {$IFDEF DEBUG}
-    procedure InvalidateKVPTreeNode(ANode : PKeyValuePairNode);
-    {$ENDIF}
+    procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
+                               PKeyValuePairNode; ParentNodePtr: PPKeyValuePairNode; NextMove:
+                               TIteratorMovement = imLeft);
+    { Methods to manage key/value pair linked to each array entry on Trie leaf nodes }
     function AddOrReplaceKVPTreeNode(var Root: PKeyValuePairNode; const kvp: TKeyValuePair): Boolean;
     procedure FreeKVPTreeNode(var CurNode: PKeyValuePairNode);
-    procedure NewBacktrackNode(var AIterator: THashTrieIterator; Node:
-        PKeyValuePairNode; ParentNodePtr: PPKeyValuePairNode; NextMove:
-        TIteratorMovement = imLeft);
     function NewKVPTreeNode(const kvp: TKeyValuePair): PKeyValuePairNode;
     procedure NextKVPTreeNode(var AIterator: THashTrieIterator; AFreeNodes: Boolean = False);
     procedure RemoveKVPTreeNode(ParentNodePtr: PPKeyValuePairNode; Node: PKeyValuePairNode);
+    {$IFDEF DEBUG}
+    procedure InvalidateKVPTreeNode(ANode : PKeyValuePairNode);
+    {$ENDIF}
   protected
     procedure InitLeaf(var Leaf); {$IFNDEF FPC} inline; {$ENDIF}
     procedure FreeKey({%H-}key: Pointer; {%H-}KeySize: Cardinal); virtual;

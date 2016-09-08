@@ -680,6 +680,28 @@ begin
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
+procedure TStringHashTrieTest.TestRemoveAndPack;
+var
+  Value : Pointer;
+begin
+  FStrHashTrie.Add('Hello World', Self);
+  FStrHashTrie.Add('Hello World 2', Self);
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Pack;
+  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
+  FStrHashTrie.Remove('Hello World');
+  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
+  FStrHashTrie.Pack;
+end;
+
+procedure TStringHashTrieTest.TraverseMethUnicode({%H-}UserData: Pointer; Key:
+    PChar; Data: TObject; var Done: Boolean);
+begin
+  CheckEquals('Привет мир', StrPas(Key), 'Item not found');
+  Check(Data = TObject(Self), 'Item found doesn''t match expected value');
+end;
+{$ENDIF}
+
 procedure TStringHashTrieTest.TestAddIterateRemovingCurrentNode;
 const
   LOOPS = 100000;
@@ -736,27 +758,6 @@ begin
   Check(FStrHashTrie.Next(It, AKey, AValue), 'Second call should succeed');
 end;
 
-procedure TStringHashTrieTest.TestRemoveAndPack;
-var
-  Value : Pointer;
-begin
-  FStrHashTrie.Add('Hello World', Self);
-  FStrHashTrie.Add('Hello World 2', Self);
-  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  FStrHashTrie.Pack;
-  Check(FStrHashTrie.Find('Hello World', Value), 'Item not found');
-  FStrHashTrie.Remove('Hello World');
-  Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
-  FStrHashTrie.Pack;
-end;
-
-procedure TStringHashTrieTest.TraverseMethUnicode({%H-}UserData: Pointer; Key:
-    PChar; Data: TObject; var Done: Boolean);
-begin
-  CheckEquals('Привет мир', StrPas(Key), 'Item not found');
-  Check(Data = TObject(Self), 'Item found doesn''t match expected value');
-end;
-{$ENDIF}
 
 procedure TStringHashTrieTest.TestStressRemoveAndPack;
 var
