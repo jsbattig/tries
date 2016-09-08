@@ -329,9 +329,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer;
@@ -344,9 +348,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer;
@@ -359,9 +367,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer;
@@ -374,9 +386,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer;
@@ -389,9 +405,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TIntegerHashTrie.Traverse(UserData: Pointer; UserProc:
@@ -404,9 +424,13 @@ var
 begin
   CheckKeySize(sizeof(Key));
   InitIterator(It);
-  Done := False;
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, Key, TObject(Value), Done);
+  try
+    Done := False;
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, Key, TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 end.
