@@ -80,7 +80,7 @@ type
     destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
-    function StringListOfKeyValuePairs: TStringList;
+    function StringListOfKeyValuePairs: TStrings;
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
     function Find(const key : String; out Value: Pointer): Boolean; overload;
@@ -303,7 +303,7 @@ begin
     Value._AddRef;
 end;
 
-function TStringHashTrie.StringListOfKeyValuePairs: TStringList;
+function TStringHashTrie.StringListOfKeyValuePairs: TStrings;
 var
   It : THashTrieIterator;
   Key : String;

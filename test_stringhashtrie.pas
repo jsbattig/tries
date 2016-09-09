@@ -786,13 +786,13 @@ end;
 
 procedure TStringHashTrieTest.TestToStringListKeyValuePair;
 var
-  AList : TStringList;
+  AList : TStrings;
 begin
   FStrHashTrie.Add(AnsiString('Hello'), Pointer(1));
   FStrHashTrie.Add('Hello 2', Pointer(2));
   AList := FStrHashTrie.StringListOfKeyValuePairs;
   try
-    AList.Sort;
+    (AList as TStringList).Sort;
     CheckEquals(2, AList.Count);
     CheckEquals('Hello', AList[0]);
     CheckEquals(1, NativeUInt(AList.Objects[0]));

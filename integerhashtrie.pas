@@ -89,9 +89,6 @@ type
 
 implementation
 
-resourcestring
-  SListOfKeysCallWhenKeySize64NotSupportedOnWin32 = 'ListOfKeys call when KeySize=64 not supported on 32 bits CPUs';
-
 { TIntegerHashTrie }
 
 constructor TIntegerHashTrie.Create(AHashSize: Byte = 16; AUseHashTable: Boolean = False);
@@ -241,6 +238,8 @@ var
   Key32 : Cardinal;
   {$IFDEF CPUX64}
   Key64 : Int64;
+  {$ELSE}
+  kvp : PKeyValuePair;
   {$ENDIF}
   AValue : Pointer;
 begin
@@ -259,7 +258,12 @@ begin
           while Next(It, Key64, AValue) do
             Result.Add(Pointer(Key64));
           {$ELSE}
-          raise EIntegerHashTrie.Create(SListOfKeysCallWhenKeySize64NotSupportedOnWin32);
+          repeat
+            kvp := inherited Next(It);
+            if kvp = nil then
+              break;
+            Result.Add(PInt64(kvp^.Key));
+          until False;
           {$ENDIF}
       end;
     finally

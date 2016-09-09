@@ -269,17 +269,14 @@ procedure TIntegerHashTrieTest.TestListOfKeys64;
 var
   AList : TList;
 begin
-  {$IFNDEF CPUX64}
-  ExpectedException := EIntegerHashTrie;
-  {$ENDIF}
   FIntHashTrie := TIntegerHashTrie.Create(16);
   FIntHashTrie.Add(Int64(1), Pointer(3));
   FIntHashTrie.Add(Int64(2), Pointer(4));
   AList := FIntHashTrie.ListOfKeys;
   try
     CheckEquals(2, AList.Count, 'List count mismatch');
-    CheckEquals(NativeUInt(AList[0]), 2);
-    CheckEquals(NativeUInt(AList[1]), 1);
+    CheckEquals({$IFDEF CPUX64} NativeUInt(AList[0]) {$ELSE} PInt64(AList[0])^ {$ENDIF}, 2);
+    CheckEquals({$IFDEF CPUX64} NativeUInt(AList[1]) {$ELSE} PInt64(AList[1])^ {$ENDIF}, 1);
   finally
     AList.Free;
   end;
