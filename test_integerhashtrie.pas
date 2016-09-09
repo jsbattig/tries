@@ -37,6 +37,10 @@ type
     procedure TestIterate16;
     procedure TestIterate64;
     procedure TestIntegerHashTrieCodePaths;
+    procedure TestListOfKeys64;
+    procedure TestListOfKeys32;
+    procedure TestListOfValues;
+    procedure TestListOfKeys16;
   end;
 
 implementation
@@ -259,6 +263,77 @@ begin
   CheckEquals(1, Key, 'Key returned from Next should be  = 1');
   Check(Value = Pointer(Self), 'Value returned from Next should be Self');
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
+end;
+
+procedure TIntegerHashTrieTest.TestListOfKeys64;
+var
+  AList : TList;
+begin
+  {$IFNDEF CPUX64}
+  ExpectedException := EIntegerHashTrie;
+  {$ENDIF}
+  FIntHashTrie := TIntegerHashTrie.Create(16);
+  FIntHashTrie.Add(Int64(1), Pointer(3));
+  FIntHashTrie.Add(Int64(2), Pointer(4));
+  AList := FIntHashTrie.ListOfKeys;
+  try
+    CheckEquals(2, AList.Count, 'List count mismatch');
+    CheckEquals(NativeUInt(AList[0]), 2);
+    CheckEquals(NativeUInt(AList[1]), 1);
+  finally
+    AList.Free;
+  end;
+end;
+
+procedure TIntegerHashTrieTest.TestListOfKeys32;
+var
+  AList : TList;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(16);
+  FIntHashTrie.Add(Cardinal(1), Pointer(3));
+  FIntHashTrie.Add(Cardinal(2), Pointer(4));
+  AList := FIntHashTrie.ListOfKeys;
+  try
+    CheckEquals(2, AList.Count, 'List count mismatch');
+    CheckEquals(NativeUInt(AList[0]), 1);
+    CheckEquals(NativeUInt(AList[1]), 2);
+  finally
+    AList.Free;
+  end;
+end;
+
+procedure TIntegerHashTrieTest.TestListOfValues;
+var
+  AList : TList;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(16);
+  FIntHashTrie.Add(Cardinal(1), Pointer(3));
+  FIntHashTrie.Add(Cardinal(2), Pointer(4));
+  AList := FIntHashTrie.ListOfValues;
+  try
+    CheckEquals(2, AList.Count, 'List count mismatch');
+    CheckEquals(NativeUInt(AList[0]), 3);
+    CheckEquals(NativeUInt(AList[1]), 4);
+  finally
+    AList.Free;
+  end;
+end;
+
+procedure TIntegerHashTrieTest.TestListOfKeys16;
+var
+  AList : TList;
+begin
+  FIntHashTrie := TIntegerHashTrie.Create(16);
+  FIntHashTrie.Add(Word(1), Pointer(3));
+  FIntHashTrie.Add(Word(2), Pointer(4));
+  AList := FIntHashTrie.ListOfKeys;
+  try
+    CheckEquals(2, AList.Count, 'List count mismatch');
+    CheckEquals(NativeUInt(AList[0]), 2);
+    CheckEquals(NativeUInt(AList[1]), 1);
+  finally
+    AList.Free;
+  end;
 end;
 
 procedure TIntegerHashTrieTest.TraverseMeth(UserData: Pointer; Value: integer;

@@ -31,7 +31,7 @@ unit IntegerHashTrie;
 interface
 
 uses
-  SysUtils, Trie, Hash_Trie, HashedContainer;
+  SysUtils, Trie, Hash_Trie, HashedContainer, Classes;
 
 type
   TIntHashTraverseProc = procedure(UserData: Pointer; Value: integer;
@@ -72,6 +72,7 @@ type
     function Find(key : Cardinal): Boolean; overload;
     function Find(key : Word): Boolean; overload;
     function Find(key : Int64): Boolean; overload;
+    function ListOfKeys: TList;
     function Remove(key : Cardinal) : Boolean; overload;
     function Remove(key : Word) : Boolean; overload;
     function Remove(key : Int64) : Boolean; overload;
@@ -87,6 +88,9 @@ type
   end;
 
 implementation
+
+resourcestring
+  SListOfKeysCallWhenKeySize64NotSupportedOnWin32 = 'ListOfKeys call when KeySize=64 not supported on 32 bits CPUs';
 
 { TIntegerHashTrie }
 
@@ -228,6 +232,43 @@ begin
     Value := kvp^.Value
   else
     Value := nil;
+end;
+
+function TIntegerHashTrie.ListOfKeys: TList;
+var
+  It : THashTrieIterator;
+  Key16 : Word;
+  Key32 : Cardinal;
+  {$IFDEF CPUX64}
+  Key64 : Int64;
+  {$ENDIF}
+  AValue : Pointer;
+begin
+  Result := TList.Create;
+  try
+    Result.Capacity := FCount;
+    InitIterator(It);
+    try
+      case FKeySize of
+        sizeof(word) : while Next(It, Key16, AValue) do
+          Result.Add(Pointer(Key16));
+        sizeof(Cardinal) : while Next(It, Key32, AValue) do
+          Result.Add(Pointer(Key32));
+        sizeof(Int64) :
+          {$IFDEF CPUX64}
+          while Next(It, Key64, AValue) do
+            Result.Add(Pointer(Key64));
+          {$ELSE}
+          raise EIntegerHashTrie.Create(SListOfKeysCallWhenKeySize64NotSupportedOnWin32);
+          {$ENDIF}
+      end;
+    finally
+      DoneIterator(It);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 function TIntegerHashTrie.Remove(key: Cardinal): Boolean;

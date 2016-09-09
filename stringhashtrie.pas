@@ -34,7 +34,8 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  trieAllocators
+  trieAllocators,
+  Classes
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -79,6 +80,7 @@ type
     destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
+    function StringListOfKeyValuePairs: TStringList;
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
     function Find(const key : String; out Value: Pointer): Boolean; overload;
@@ -299,6 +301,28 @@ begin
   Result := Next(AIterator, key, Pointer(Value));
   if Result and (Value <> nil) then  
     Value._AddRef;
+end;
+
+function TStringHashTrie.StringListOfKeyValuePairs: TStringList;
+var
+  It : THashTrieIterator;
+  Key : String;
+  Value : Pointer;
+begin
+  Result := TStringList.Create;
+  try
+    Result.Capacity := FCount;
+    InitIterator(It);
+    try
+      while Next(It, Key, Value) do
+        Result.AddObject(Key, Value);
+    finally
+      DoneIterator(It);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:

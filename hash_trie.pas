@@ -7,7 +7,7 @@ unit Hash_Trie;
 interface
 
 uses
-  Trie, hash_table, trieAllocators, HashedContainer;
+  Trie, hash_table, trieAllocators, HashedContainer, Classes;
 
 type
   PKeyValuePair = ^TKeyValuePair;
@@ -115,6 +115,7 @@ type
     procedure DoneIterator(var AIterator : THashTrieIterator);
     procedure RemoveCurrentNode(const AIterator : THashTrieIterator);
     procedure Pack;
+    function ListOfValues: TList;
     property AutoFreeValue : Boolean read FAutoFreeValue write FAutoFreeValue;
     property AutoFreeValueMode : TAutoFreeMode read FAutoFreeValueMode write FAutoFreeValueMode;
   end;
@@ -553,8 +554,8 @@ var
   Node : PTrieBranchNode;
   KVPNode : PKeyValuePairNode;
 begin
-  if FIteratorInvalidated then
-    raise EHashTrie.Create(StrIteratorWasInvalidated);
+  {if FIteratorInvalidated then
+    raise EHashTrie.Create(StrIteratorWasInvalidated);}
   if AIterator.BackTrack <> nil then
   begin
     NextKVPTreeNode(AIterator);
@@ -706,6 +707,31 @@ begin
   else trieAllocators.DeAlloc(Node);
   dec(FCount);
   FPackingRequired := True;
+end;
+
+function THashTrie.ListOfValues: TList;
+var
+  It : THashTrieIterator;
+  kvp : PKeyValuePair;
+begin
+  Result := TList.Create;
+  try
+    Result.Capacity := FCount;
+    InitIterator(It);
+    try
+      repeat
+        kvp := Next(It);
+        if kvp = nil then
+          break;
+        Result.Add(kvp^.Value);
+      until False;
+    finally
+      DoneIterator(It);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
 end;
 
 end.
