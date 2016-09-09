@@ -73,6 +73,7 @@ type
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
     FIteratorInvalidated: Boolean;
+    FPackingRequired : Boolean;
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
     FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
     FTrieDepth: Byte;
@@ -221,7 +222,7 @@ begin
     case FAutoFreeValueMode of
       afmFree             : TObject(value).Free;
       afmFreeMem          : FreeMem(value);
-      afmStrDispose   : {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(PAnsiChar(value));
+      afmStrDispose       : {$IFDEF UNICODE}AnsiStrings.{$ENDIF}StrDispose(PAnsiChar(value));
       afmReleaseInterface : IUnknown(Value)._Release;
     end;
 end;
@@ -524,6 +525,8 @@ var
   i, AChildIndex : byte;
   Node : PHashTrieNode;
 begin
+  if not FPackingRequired then
+    exit;
   FContainer.InitIterator(It.Base);
   while FContainer.Next(It.Base) do
   begin
@@ -541,6 +544,7 @@ begin
 ContinueOuterLoopIteration:
   end;
   FContainer.Pack;
+  FPackingRequired := False;
 end;
 
 function THashTrie.Next(var AIterator: THashTrieIterator): PKeyValuePair;
@@ -701,6 +705,7 @@ begin
   end
   else trieAllocators.DeAlloc(Node);
   dec(FCount);
+  FPackingRequired := True;
 end;
 
 end.
