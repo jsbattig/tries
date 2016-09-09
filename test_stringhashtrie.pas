@@ -95,6 +95,7 @@ type
     procedure TestIterateWithInvalidIterator_Fails;
     procedure TestIterateTryRemoveNonExistingNode_Success;
     procedure TestStressRemoveAndPack;
+    procedure TestToStringListKeyValuePair;
   end;
 
 implementation
@@ -781,6 +782,25 @@ begin
       end;
       FreeAndNil(FStrHashTrie);
     end;
+end;
+
+procedure TStringHashTrieTest.TestToStringListKeyValuePair;
+var
+  AList : TStrings;
+begin
+  FStrHashTrie.Add(AnsiString('Hello'), Pointer(1));
+  FStrHashTrie.Add('Hello 2', Pointer(2));
+  AList := FStrHashTrie.StringListOfKeyValuePairs;
+  try
+    (AList as TStringList).Sort;
+    CheckEquals(2, AList.Count);
+    CheckEquals('Hello', AList[0]);
+    CheckEquals(1, NativeUInt(AList.Objects[0]));
+    CheckEquals('Hello 2', AList[1]);
+    CheckEquals(2, NativeUInt(AList.Objects[1]));
+  finally
+    AList.Free;
+  end;
 end;
 
 initialization

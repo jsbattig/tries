@@ -34,7 +34,8 @@ uses
   SysUtils,
   Trie,
   Hash_Trie,
-  trieAllocators
+  trieAllocators,
+  Classes
   {$IFDEF UNICODE},AnsiStrings {$ENDIF};
 
 type
@@ -79,6 +80,7 @@ type
     destructor Destroy; override;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseProc); overload;
     procedure Traverse(UserData: Pointer; UserProc: TStrHashTraverseMeth); overload;
+    function StringListOfKeyValuePairs: TStrings;
     {$IFDEF UNICODE}
     function Add(const key: String; Value: Pointer = nil): Boolean; overload;
     function Find(const key : String; out Value: Pointer): Boolean; overload;
@@ -301,6 +303,28 @@ begin
     Value._AddRef;
 end;
 
+function TStringHashTrie.StringListOfKeyValuePairs: TStrings;
+var
+  It : THashTrieIterator;
+  Key : String;
+  Value : Pointer;
+begin
+  Result := TStringList.Create;
+  try
+    Result.Capacity := FCount;
+    InitIterator(It);
+    try
+      while Next(It, Key, Value) do
+        Result.AddObject(Key, Value);
+    finally
+      DoneIterator(It);
+    end;
+  except
+    Result.Free;
+    raise;
+  end;
+end;
+
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:
     TStrHashTraverseProc);
 var
@@ -310,8 +334,12 @@ var
   Done : Boolean;
 begin
   InitTraversal(It, Done);
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
+  try
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:
@@ -323,8 +351,12 @@ var
   Done : Boolean;
 begin
   InitTraversal(It, Done);
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
+  try
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, PAnsiChar(Key), TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 {$IFDEF UNICODE}
@@ -338,8 +370,12 @@ var
 begin
   CheckCaseInsensitiveWithUTF16;
   InitTraversal(It, Done);
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PChar(Key), TObject(Value), Done);
+  try
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, PChar(Key), TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 
 procedure TStringHashTrie.Traverse(UserData: Pointer; UserProc:
@@ -352,8 +388,12 @@ var
 begin
   CheckCaseInsensitiveWithUTF16;
   InitTraversal(It, Done);
-  while (not Done) and Next(It, Key, Value) do
-    UserProc(UserData, PChar(Key), TObject(Value), Done);
+  try
+    while (not Done) and Next(It, Key, Value) do
+      UserProc(UserData, PChar(Key), TObject(Value), Done);
+  finally
+    DoneIterator(It);
+  end;
 end;
 {$ENDIF}
 
