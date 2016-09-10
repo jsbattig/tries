@@ -250,13 +250,13 @@ begin
     try
       case FKeySize of
         sizeof(word) : while Next(It, Key16, AValue) do
-          Result.Add(Pointer(Key16));
+          Result.Add({%H-}Pointer(Key16));
         sizeof(Cardinal) : while Next(It, Key32, AValue) do
-          Result.Add(Pointer(Key32));
+          Result.Add({%H-}Pointer(Key32));
         sizeof(Int64) :
           {$IFDEF CPUX64}
           while Next(It, Key64, AValue) do
-            Result.Add(Pointer(Key64));
+            Result.Add({%H-}Pointer(Key64));
           {$ELSE}
           repeat
             kvp := inherited Next(It);

@@ -130,7 +130,6 @@ uses
 resourcestring
   SInternalErrorUseHashTableWithHashSize = 'Internal error: if AUseHashTable is True then AHashSize must be <= 20 calling constructor THashTrie.Create()';
   SInternalErrorCheckParameterAHashSize = 'Internal error: check parameter AHashSize calling THashTrie.Create() constructor';
-  StrIteratorWasInvalidated = 'Iterator was invalidated with prior call to Remove(Key) method. Please use RemoveCurrentNode instead';
 
 function HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin

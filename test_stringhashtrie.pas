@@ -736,13 +736,17 @@ var
   AKey : AnsiString;
   AValue : Pointer;
 begin
-  ExpectedException := EHashTrie;
   FStrHashTrie.Add('Hello World');
   FStrHashTrie.Add('Hello World2');
   FStrHashTrie.InitIterator(It);
   Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
   FStrHashTrie.Remove('Hello World');
-  FStrHashTrie.Next(It, AKey, AValue);
+  try
+    FStrHashTrie.Next(It, AKey, AValue);
+    Fail('Should error out when iterator was invalidated');
+  except
+    on E : EHashTrie do Check(true);
+  end;
 end;
 
 procedure TStringHashTrieTest.TestIterateTryRemoveNonExistingNode_Success;

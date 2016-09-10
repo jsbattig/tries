@@ -292,8 +292,8 @@ begin
   AList := FIntHashTrie.ListOfKeys;
   try
     CheckEquals(2, AList.Count, 'List count mismatch');
-    CheckEquals(NativeUInt(AList[0]), 1);
-    CheckEquals(NativeUInt(AList[1]), 2);
+    CheckEquals({%H-}NativeUInt(AList[0]), 1);
+    CheckEquals({%H-}NativeUInt(AList[1]), 2);
   finally
     AList.Free;
   end;
@@ -309,8 +309,8 @@ begin
   AList := FIntHashTrie.ListOfValues;
   try
     CheckEquals(2, AList.Count, 'List count mismatch');
-    CheckEquals(NativeUInt(AList[0]), 3);
-    CheckEquals(NativeUInt(AList[1]), 4);
+    CheckEquals({%H-}NativeUInt(AList[0]), 3);
+    CheckEquals({%H-}NativeUInt(AList[1]), 4);
   finally
     AList.Free;
   end;
@@ -326,8 +326,8 @@ begin
   AList := FIntHashTrie.ListOfKeys;
   try
     CheckEquals(2, AList.Count, 'List count mismatch');
-    CheckEquals(NativeUInt(AList[0]), 2);
-    CheckEquals(NativeUInt(AList[1]), 1);
+    CheckEquals({%H-}NativeUInt(AList[0]), 2);
+    CheckEquals({%H-}NativeUInt(AList[1]), 1);
   finally
     AList.Free;
   end;
