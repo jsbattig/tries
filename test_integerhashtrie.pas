@@ -24,23 +24,23 @@ type
     procedure TraverseMeth({%H-}UserData: Pointer; Value: integer; Data: TObject; var
         {%H-}Done: Boolean);
   published
-    procedure TestAddAndTraverse32;
-    procedure TestAddFindAndRemove32;
-    procedure TestAddFindAndRemove16;
-    procedure TestAddFindAndRemove64;
-    procedure TestAddIterateRemovingCurrentNode;
-    procedure TestAddReplaceAndFind;
-    procedure TestAddSomeElements;
-    procedure TestAddZeroKey;
-    procedure TestCreateIntegerHashTrie;
-    procedure TestIterate32;
-    procedure TestIterate16;
-    procedure TestIterate64;
-    procedure TestIntegerHashTrieCodePaths;
-    procedure TestListOfKeys64;
-    procedure TestListOfKeys32;
-    procedure TestListOfValues;
-    procedure TestListOfKeys16;
+    procedure TestAddAndTraverse32_Succeeds;
+    procedure TestAddFindAndRemove32_Succeeds;
+    procedure TestAddFindAndRemove16_Succeeds;
+    procedure TestAddFindAndRemove64_Succeeds;
+    procedure TestAddIterateRemovingCurrentNode_Succeeds;
+    procedure TestAddReplaceAndFind_Succeeds;
+    procedure TestAddSomeElements_Succeeds;
+    procedure TestAddZeroKey_Succeeds;
+    procedure TestCreateIntegerHashTrie_Succeeds;
+    procedure TestIterate32_Succeeds;
+    procedure TestIterate16_Succeeds;
+    procedure TestIterate64_Succeeds;
+    procedure TestIntegerHashTrieCodePaths_Succeeds;
+    procedure TestListOfKeys64_Succeeds;
+    procedure TestListOfKeys32_Succeeds;
+    procedure TestListOfValues_Succeeds;
+    procedure TestListOfKeys16_Succeeds;
   end;
 
 implementation
@@ -54,7 +54,7 @@ type
     procedure CalcHash(out Hash: THashRecord; key: Pointer; {%H-}KeySize: Cardinal; {%H-}ASeed: _Int64; {%H-}AHashSize: Byte); override;
   end;
 
-procedure TIntegerHashTrieTest.TestCreateIntegerHashTrie;
+procedure TIntegerHashTrieTest.TestCreateIntegerHashTrie_Succeeds;
 begin
   FIntHashTrie := TIntegerHashTrie.Create;
   Check(FIntHashTrie <> nil, 'FIntHashTrie should be <> nil');
@@ -66,7 +66,7 @@ begin
     FIntHashTrie.Free;
 end;
 
-procedure TIntegerHashTrieTest.TestAddAndTraverse32;
+procedure TIntegerHashTrieTest.TestAddAndTraverse32_Succeeds;
 var
   Key : Cardinal;
 begin
@@ -76,7 +76,7 @@ begin
   FIntHashTrie.Traverse(nil, {$IFDEF FPC}@{$ENDIF}TraverseMeth);
 end;
 
-procedure TIntegerHashTrieTest.TestAddFindAndRemove32;
+procedure TIntegerHashTrieTest.TestAddFindAndRemove32_Succeeds;
 var
   Key : Cardinal;
   Value : Pointer;
@@ -90,7 +90,7 @@ begin
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
 end;
 
-procedure TIntegerHashTrieTest.TestAddFindAndRemove16;
+procedure TIntegerHashTrieTest.TestAddFindAndRemove16_Succeeds;
 var
   Key : word;
   Value : Pointer;
@@ -104,7 +104,7 @@ begin
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
 end;
 
-procedure TIntegerHashTrieTest.TestAddFindAndRemove64;
+procedure TIntegerHashTrieTest.TestAddFindAndRemove64_Succeeds;
 var
   Key : Int64;
   Value : Pointer;
@@ -118,7 +118,7 @@ begin
   Check(not FIntHashTrie.Find(Key, Value), 'Find should return False');
 end;
 
-procedure TIntegerHashTrieTest.TestAddIterateRemovingCurrentNode;
+procedure TIntegerHashTrieTest.TestAddIterateRemovingCurrentNode_Succeeds;
 const
   LOOPS = 100000;
 var
@@ -146,7 +146,7 @@ begin
   CheckEquals(0, FIntHashTrie.Count, 'There should be no nodes left');
 end;
 
-procedure TIntegerHashTrieTest.TestAddReplaceAndFind;
+procedure TIntegerHashTrieTest.TestAddReplaceAndFind_Succeeds;
 var
   Value : Pointer;
 begin
@@ -162,7 +162,7 @@ begin
   Check(not FIntHashTrie.Find(Cardinal(1), Value), 'Item found');
 end;
 
-procedure TIntegerHashTrieTest.TestAddSomeElements;
+procedure TIntegerHashTrieTest.TestAddSomeElements_Succeeds;
 var
   i : Cardinal;
   Value : Pointer;
@@ -177,7 +177,7 @@ begin
   end;
 end;
 
-procedure TIntegerHashTrieTest.TestAddZeroKey;
+procedure TIntegerHashTrieTest.TestAddZeroKey_Succeeds;
 var
   Value : Pointer;
 begin
@@ -186,7 +186,7 @@ begin
   Check(FIntHashTrie.Find(Cardinal(0), Value), 'Zero should be allowed');
 end;
 
-procedure TIntegerHashTrieTest.TestIntegerHashTrieCodePaths;
+procedure TIntegerHashTrieTest.TestIntegerHashTrieCodePaths_Succeeds;
 var
   h : TIntegerHashTrie_FunctionalTest;
   i, j : Cardinal;
@@ -217,7 +217,7 @@ begin
   end;
 end;
 
-procedure TIntegerHashTrieTest.TestIterate32;
+procedure TIntegerHashTrieTest.TestIterate32_Succeeds;
 var
   Key : Cardinal;
   Value : pointer;
@@ -233,7 +233,7 @@ begin
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
  end;
 
-procedure TIntegerHashTrieTest.TestIterate16;
+procedure TIntegerHashTrieTest.TestIterate16_Succeeds;
 var
   Key : Word;
   Value : pointer;
@@ -249,7 +249,7 @@ begin
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
 end;
 
-procedure TIntegerHashTrieTest.TestIterate64;
+procedure TIntegerHashTrieTest.TestIterate64_Succeeds;
 var
   Key : Int64;
   Value : pointer;
@@ -265,7 +265,7 @@ begin
   Check(not FIntHashTrie.Next(It, Key, Value), 'Second call to Next should return False');
 end;
 
-procedure TIntegerHashTrieTest.TestListOfKeys64;
+procedure TIntegerHashTrieTest.TestListOfKeys64_Succeeds;
 var
   AList : TList;
 begin
@@ -282,7 +282,7 @@ begin
   end;
 end;
 
-procedure TIntegerHashTrieTest.TestListOfKeys32;
+procedure TIntegerHashTrieTest.TestListOfKeys32_Succeeds;
 var
   AList : TList;
 begin
@@ -299,7 +299,7 @@ begin
   end;
 end;
 
-procedure TIntegerHashTrieTest.TestListOfValues;
+procedure TIntegerHashTrieTest.TestListOfValues_Succeeds;
 var
   AList : TList;
 begin
@@ -316,7 +316,7 @@ begin
   end;
 end;
 
-procedure TIntegerHashTrieTest.TestListOfKeys16;
+procedure TIntegerHashTrieTest.TestListOfKeys16_Succeeds;
 var
   AList : TList;
 begin
