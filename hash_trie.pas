@@ -46,6 +46,7 @@ type
     BackTrack : PKeyValuePairBacktrackNode;
     CurNodeParent : PPKeyValuePairNode;
     CurNode : PKeyValuePairNode;
+    RemoveOperationCount : Cardinal;
     case Integer of
       0 : (Base : THashedContainerIterator);
       1 : (BaseTrieIterator : TTrieIterator);
@@ -72,7 +73,7 @@ type
     FContainer : THashedContainer;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
-    FRemoveOperationsAfterIteratorNext: Integer;
+    FRemoveOperationCount: Cardinal;
     FLastNodeRemoved : PKeyValuePairNode;
     FPackingRequired : Boolean;
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
@@ -446,8 +447,6 @@ begin
       begin
         RemoveKVPTreeNode(ParentNodePtr, Node);
         Result := True;
-        inc(FRemoveOperationsAfterIteratorNext);
-        FLastNodeRemoved := Node;
         exit;
       end;
     if Hash < Node^.KVP.Hash then
@@ -476,7 +475,7 @@ begin
   AIterator.BackTrack := nil;
   AIterator.CurNodeParent := nil;
   AIterator.CurNode := nil;
-  FRemoveOperationsAfterIteratorNext := 0;
+  AIterator.RemoveOperationCount := FRemoveOperationCount;
   FLastNodeRemoved := nil;
 end;
 
@@ -556,10 +555,11 @@ var
   Node : PTrieBranchNode;
   KVPNode : PKeyValuePairNode;
 begin
-  if (FRemoveOperationsAfterIteratorNext> 1) or
-     ((FRemoveOperationsAfterIteratorNext > 0) and (FLastNodeRemoved <> AIterator.CurNode)) then
+  if (FRemoveOperationCount - AIterator.RemoveOperationCount > 1) or
+     ((FRemoveOperationCount - AIterator.RemoveOperationCount = 1) and
+      (FLastNodeRemoved <> AIterator.CurNode)) then
     raise EHashTrie.Create(StrIteratorWasInvalidated);
-  FRemoveOperationsAfterIteratorNext := 0;
+  AIterator.RemoveOperationCount := FRemoveOperationCount;
   if AIterator.BackTrack <> nil then
   begin
     NextKVPTreeNode(AIterator);
@@ -711,6 +711,8 @@ begin
   else trieAllocators.DeAlloc(Node);
   dec(FCount);
   FPackingRequired := True;
+  inc(FRemoveOperationCount);
+  FLastNodeRemoved := Node;
 end;
 
 function THashTrie.ListOfValues: TList;
