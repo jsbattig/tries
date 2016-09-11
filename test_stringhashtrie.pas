@@ -740,7 +740,7 @@ begin
   FStrHashTrie.Add('Hello World2');
   FStrHashTrie.InitIterator(It);
   Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
-  FStrHashTrie.Remove('Hello World');
+  FStrHashTrie.Remove('Hello World2');
   try
     FStrHashTrie.Next(It, AKey, AValue);
     Fail('Should error out when iterator was invalidated');
