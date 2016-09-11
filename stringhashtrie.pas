@@ -315,7 +315,7 @@ begin
     InitIterator(It);
     try
       while Next(It, Key, Value) do
-        Result.AddObject(Key, Value);
+        Result.AddObject(Key, TObject(Value));
     finally
       DoneIterator(It);
     end;

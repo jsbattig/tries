@@ -59,43 +59,46 @@ type
         TObject; var Done: Boolean);
     {$ENDIF}
   published
-    procedure Add15KGUIDsRemoveHalfPackAndFindEachOne;
-    procedure AddFromTestDataFile;
-    procedure TestCreate;
-    procedure TestAddAndFind;
-    procedure TestAddRemoveAndReAddMultipleTimes;
-    procedure TestAddSeveralAndFind;
-    procedure TestAddReplaceAndFind;
-    procedure TestAddAndTraverse;
-    procedure TestAddAndFindCaseInsensitive;
-    procedure TestAddAndFindManyEntries;
-    procedure TestAddIterateAndFindManyEntries;
-    procedure TestAddAndFindHash16;
-    procedure TestAddAndFindHash64;
-    procedure TestAddFindAndRemoveManyEntries;
+    procedure Add15KGUIDsRemoveHalfPackAndFindEachOne_Succeeds;
+    procedure AddFromTestDataFile_Succeeds;
+    procedure TestCreate_Succeeds;
+    procedure TestAddAndFind_Succeeds;
+    procedure TestAddRemoveAndReAddMultipleTimes_Succeeds;
+    procedure TestAddSeveralAndFind_Succeeds;
+    procedure TestAddReplaceAndFind_Succeeds;
+    procedure TestAddAndTraverse_Succeeds;
+    procedure TestAddAndFindCaseInsensitive_Succeeds;
+    procedure TestAddAndFindManyEntries_Succeeds;
+    procedure TestAddIterateAndFindManyEntries_Succeeds;
+    procedure TestAddAndFindHash16_Succeeds;
+    procedure TestAddAndFindHash64_Succeeds;
+    procedure TestAddFindAndRemoveManyEntries_Succeeds;
     {$IFDEF HasGenerics}
-    procedure TestAddAndFindManyEntriesUsingTDictionary;
-    procedure TestAddIterateAndFindManyEntriesTDictionary;
-    procedure TestAddAndFindManyEntriesFastTDictionary;
+    procedure TestAddAndFindManyEntriesUsingTDictionary_Succeeds;
+    procedure TestAddIterateAndFindManyEntriesTDictionary_Succeeds;
+    procedure TestAddAndFindManyEntriesFastTDictionary_Succeeds;
     {$ENDIF}
-    procedure TestRemoveAndPackHash32;
-    procedure TestIterator;
-    procedure TestAutoFreeValue;
-    procedure TestAddTwoValuesAndIterate;
-    procedure TestAddAndFindManyEntriesFast;
-    procedure TestAddAndFindManyEntriesFastUsing16bitsHash;
+    procedure TestRemoveAndPackHash32_Succeeds;
+    procedure TestIterator_Succeeds;
+    procedure TestAutoFreeValue_Succeeds;
+    procedure TestAddTwoValuesAndIterate_Succeeds;
+    procedure TestAddAndFindManyEntriesFast_Succeeds;
+    procedure TestAddAndFindManyEntriesFastUsing16bitsHash_Succeeds;
     {$IFDEF UNICODE}
-    procedure TestUnicodeChars;
-    procedure TestAddAndTraverseUnicode;
-    procedure TestAddFindAndRemoveManyEntriesUsingTDictionary;
+    procedure TestUnicodeChars_Succeeds;
+    procedure TestAddAndTraverseUnicode_Succeeds;
+    procedure TestAddFindAndRemoveManyEntriesUsingTDictionary_Succeeds;
     procedure TestAddIterateAndFindManyEntriesHash32;
-    procedure TestRemoveAndPack;
+    procedure TestRemoveAndPack_Succeeds;
     {$ENDIF}
-    procedure TestAddIterateRemovingCurrentNode;
-    procedure TestIterateWithInvalidIterator_Fails;
-    procedure TestIterateTryRemoveNonExistingNode_Success;
-    procedure TestStressRemoveAndPack;
-    procedure TestToStringListKeyValuePair;
+    procedure TestAddIterateRemovingCurrentNode_Succeeds;
+    procedure TestIterateAfterRemovalOfNode_Fails;
+    procedure TestIterateRemoveTwoNodesIterateAgain_Fails;
+    procedure TestIterateAfterRemovalOfNode_Succeeds;
+    procedure TestTwoIteratorsRemoveTwoNodesIterateAgain_Fails;
+    procedure TestIterateTryRemoveNonExistingNode_Succeeds;
+    procedure TestStressRemoveAndPack_Succeeds;
+    procedure TestToStringListKeyValuePair_Succeeds;
   end;
 
 implementation
@@ -103,7 +106,7 @@ implementation
 uses
   Hash_Trie {$IFDEF HasGenerics}, Generics.Collections {$ENDIF};
 
-procedure TStringHashTrieTest.Add15KGUIDsRemoveHalfPackAndFindEachOne;
+procedure TStringHashTrieTest.Add15KGUIDsRemoveHalfPackAndFindEachOne_Succeeds;
 const
   Loops = 15000;
   Scenario : array[0..3] of Integer = (2, 3740, 14998, 2);
@@ -179,7 +182,7 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.AddFromTestDataFile;
+procedure TStringHashTrieTest.AddFromTestDataFile_Succeeds;
 var
   List : TStringList;
   i, j, k : integer;
@@ -229,12 +232,12 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestCreate;
+procedure TStringHashTrieTest.TestCreate_Succeeds;
 begin
   Check(FStrHashTrie <> nil, 'Failed to create FStrHashTrie');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFind;
+procedure TStringHashTrieTest.TestAddAndFind_Succeeds;
 var
   Value : Pointer;
 begin
@@ -243,7 +246,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindManyEntries;
+procedure TStringHashTrieTest.TestAddAndFindManyEntries_Succeeds;
 const
   Count = 1024 * 64;
 var
@@ -279,7 +282,7 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestAddIterateAndFindManyEntries;
+procedure TStringHashTrieTest.TestAddIterateAndFindManyEntries_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -301,7 +304,7 @@ begin
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindHash16;
+procedure TStringHashTrieTest.TestAddAndFindHash16_Succeeds;
 var
   Value : Pointer;
 begin
@@ -312,7 +315,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindHash64;
+procedure TStringHashTrieTest.TestAddAndFindHash64_Succeeds;
 var
   Value : Pointer;
 begin
@@ -323,7 +326,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestRemoveAndPackHash32;
+procedure TStringHashTrieTest.TestRemoveAndPackHash32_Succeeds;
 var
   Value : Pointer;
 begin
@@ -339,7 +342,7 @@ begin
   FStrHashTrie.Pack;
 end;
 
-procedure TStringHashTrieTest.TestIterator;
+procedure TStringHashTrieTest.TestIterator_Succeeds;
 var
   AIterator : THashTrieIterator;
   AKey : AnsiString;
@@ -354,7 +357,7 @@ begin
   Check(not FStrHashTrie.Next(AIterator, AKey, AValue), 'Value of FStrHashTrie.Next doesn''t match');
 end;
 
-procedure TStringHashTrieTest.TestAutoFreeValue;
+procedure TStringHashTrieTest.TestAutoFreeValue_Succeeds;
 var
   Value : Pointer;
   Obj : TObject;
@@ -372,7 +375,7 @@ begin
   FStrHashTrie.Clear;
 end;
 
-procedure TStringHashTrieTest.TestAddTwoValuesAndIterate;
+procedure TStringHashTrieTest.TestAddTwoValuesAndIterate_Succeeds;
 var
   AIterator : THashTrieIterator;
   AKey : AnsiString;
@@ -401,7 +404,7 @@ begin
   FStrHashTrie.Free;
 end;
 
-procedure TStringHashTrieTest.TestAddRemoveAndReAddMultipleTimes;
+procedure TStringHashTrieTest.TestAddRemoveAndReAddMultipleTimes_Succeeds;
 var
   Value : Pointer;
   i : integer;
@@ -415,7 +418,7 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestAddSeveralAndFind;
+procedure TStringHashTrieTest.TestAddSeveralAndFind_Succeeds;
 var
   Value : Pointer;
 begin
@@ -427,7 +430,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestAddReplaceAndFind;
+procedure TStringHashTrieTest.TestAddReplaceAndFind_Succeeds;
 var
   Value : Pointer;
 begin
@@ -442,13 +445,13 @@ begin
   Check(not FStrHashTrie.Find('Hello World', Value), 'Item found');
 end;
 
-procedure TStringHashTrieTest.TestAddAndTraverse;
+procedure TStringHashTrieTest.TestAddAndTraverse_Succeeds;
 begin
   FStrHashTrie.Add('Hello World', Self);
   FStrHashTrie.Traverse(nil, {$IFDEF FPC}@{$ENDIF}TraverseMeth);
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindCaseInsensitive;
+procedure TStringHashTrieTest.TestAddAndFindCaseInsensitive_Succeeds;
 var
   Value : Pointer;
 begin
@@ -458,7 +461,7 @@ begin
   Check(Value = Pointer(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntries;
+procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntries_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -484,7 +487,7 @@ begin
 end;
 
 {$IFDEF HasGenerics}
-procedure TStringHashTrieTest.TestAddAndFindManyEntriesFastTDictionary;
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesFastTDictionary_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -503,7 +506,8 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary;
+procedure
+    TStringHashTrieTest.TestAddAndFindManyEntriesUsingTDictionary_Succeeds;
 const
   Count = 1024 * 64;
 var
@@ -546,7 +550,8 @@ begin
   end;
 end;
 
-procedure TStringHashTrieTest.TestAddIterateAndFindManyEntriesTDictionary;
+procedure
+    TStringHashTrieTest.TestAddIterateAndFindManyEntriesTDictionary_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -573,7 +578,7 @@ end;
 {$ENDIF}
 
 {$IFDEF UNICODE}
-procedure TStringHashTrieTest.TestUnicodeChars;
+procedure TStringHashTrieTest.TestUnicodeChars_Succeeds;
 var
   Value : Pointer;
 begin
@@ -590,7 +595,7 @@ begin
   Check(Data = TObject(Self), 'Item found doesn''t match expected value');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindManyEntriesFast;
+procedure TStringHashTrieTest.TestAddAndFindManyEntriesFast_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -604,7 +609,8 @@ begin
     FStrHashTrie.Find(AnsiString(IntToStr(i)) + 'hello');
 end;
 
-procedure TStringHashTrieTest.TestAddAndFindManyEntriesFastUsing16bitsHash;
+procedure
+    TStringHashTrieTest.TestAddAndFindManyEntriesFastUsing16bitsHash_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -619,13 +625,14 @@ begin
 end;
 
 {$IFDEF UNICODE}
-procedure TStringHashTrieTest.TestAddAndTraverseUnicode;
+procedure TStringHashTrieTest.TestAddAndTraverseUnicode_Succeeds;
 begin
   FStrHashTrie.Add('Привет мир', Self);
   FStrHashTrie.Traverse(nil, TraverseMethUnicode);
 end;
 
-procedure TStringHashTrieTest.TestAddFindAndRemoveManyEntriesUsingTDictionary;
+procedure
+    TStringHashTrieTest.TestAddFindAndRemoveManyEntriesUsingTDictionary_Succeeds;
 const
   Count = 1024 * 1024 * 1;
 var
@@ -681,7 +688,7 @@ begin
   CheckEquals(Count, Cnt, 'Count of iterated values doesn''t match');
 end;
 
-procedure TStringHashTrieTest.TestRemoveAndPack;
+procedure TStringHashTrieTest.TestRemoveAndPack_Succeeds;
 var
   Value : Pointer;
 begin
@@ -703,7 +710,7 @@ begin
 end;
 {$ENDIF}
 
-procedure TStringHashTrieTest.TestAddIterateRemovingCurrentNode;
+procedure TStringHashTrieTest.TestAddIterateRemovingCurrentNode_Succeeds;
 const
   LOOPS = 100000;
 var
@@ -730,22 +737,88 @@ begin
   CheckEquals(0, FStrHashTrie.Count, 'There should be no nodes left');
 end;
 
-procedure TStringHashTrieTest.TestIterateWithInvalidIterator_Fails;
+procedure TStringHashTrieTest.TestIterateAfterRemovalOfNode_Fails;
 var
   It : THashTrieIterator;
   AKey : AnsiString;
   AValue : Pointer;
 begin
-  ExpectedException := EHashTrie;
   FStrHashTrie.Add('Hello World');
   FStrHashTrie.Add('Hello World2');
   FStrHashTrie.InitIterator(It);
   Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
-  FStrHashTrie.Remove('Hello World');
-  FStrHashTrie.Next(It, AKey, AValue);
+  Check(FStrHashTrie.Remove('Hello World2'), 'Removal should succeed');
+  try
+    FStrHashTrie.Next(It, AKey, AValue);
+    Fail('Should error out when iterator was invalidated');
+  except
+    on E : EHashTrie do Check(true);
+  end;
 end;
 
-procedure TStringHashTrieTest.TestIterateTryRemoveNonExistingNode_Success;
+procedure TStringHashTrieTest.TestIterateRemoveTwoNodesIterateAgain_Fails;
+var
+  It : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Add('Hello World');
+  FStrHashTrie.Add('Hello World2');
+  FStrHashTrie.Add('Hello World3');
+  FStrHashTrie.InitIterator(It);
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
+  CheckEquals('Hello World', AKey);
+  Check(FStrHashTrie.Remove('Hello World3'), 'Removal should succeed');
+  FStrHashTrie.RemoveCurrentNode(It);
+  try
+    FStrHashTrie.Next(It, AKey, AValue);
+    Fail('Should error out when iterator was invalidated');
+  except
+    on E : EHashTrie do Check(true);
+  end;
+end;
+
+procedure TStringHashTrieTest.TestIterateAfterRemovalOfNode_Succeeds;
+var
+  It : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Add('Hello World');
+  FStrHashTrie.Add('Hello World2');
+  FStrHashTrie.InitIterator(It);
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'First call to Next should be true');
+  Check(FStrHashTrie.Remove('Hello World'), 'Removal should succeed');
+  Check(FStrHashTrie.Next(It, AKey, AValue), 'Next should succeed');
+end;
+
+procedure TStringHashTrieTest.TestTwoIteratorsRemoveTwoNodesIterateAgain_Fails;
+var
+  It1, It2 : THashTrieIterator;
+  AKey : AnsiString;
+  AValue : Pointer;
+begin
+  FStrHashTrie.Add('Hello World');
+  FStrHashTrie.Add('Hello World2');
+  FStrHashTrie.Add('Hello World3');
+  FStrHashTrie.InitIterator(It1);
+  FStrHashTrie.InitIterator(It2);
+  Check(FStrHashTrie.Next(It1, AKey, AValue), 'First call to Next should be true');
+  CheckEquals('Hello World', AKey);
+  Check(FStrHashTrie.Next(It2, AKey, AValue), 'First call to Next should be true');
+  CheckEquals('Hello World', AKey);
+  Check(FStrHashTrie.Next(It1, AKey, AValue), 'Second call to Next should be true');
+  FStrHashTrie.RemoveCurrentNode(It2);
+  FStrHashTrie.RemoveCurrentNode(It1);
+  try
+    FStrHashTrie.Next(It1, AKey, AValue);
+    Fail('Should error out when iterator was invalidated');
+  except
+    on E : EHashTrie do Check(true);
+  end;
+end;
+
+procedure TStringHashTrieTest.TestIterateTryRemoveNonExistingNode_Succeeds;
 var
   It : THashTrieIterator;
   AKey : AnsiString;
@@ -760,7 +833,7 @@ begin
 end;
 
 
-procedure TStringHashTrieTest.TestStressRemoveAndPack;
+procedure TStringHashTrieTest.TestStressRemoveAndPack_Succeeds;
 var
   s : AnsiString;
   i, k : Integer;
@@ -784,7 +857,7 @@ begin
     end;
 end;
 
-procedure TStringHashTrieTest.TestToStringListKeyValuePair;
+procedure TStringHashTrieTest.TestToStringListKeyValuePair_Succeeds;
 var
   AList : TStrings;
 begin

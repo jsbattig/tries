@@ -46,6 +46,7 @@ type
     BackTrack : PKeyValuePairBacktrackNode;
     CurNodeParent : PPKeyValuePairNode;
     CurNode : PKeyValuePairNode;
+    RemoveOperationCount : Cardinal;
     case Integer of
       0 : (Base : THashedContainerIterator);
       1 : (BaseTrieIterator : TTrieIterator);
@@ -72,7 +73,8 @@ type
     FContainer : THashedContainer;
     FAutoFreeValue : Boolean;
     FAutoFreeValueMode : TAutoFreeMode;
-    FIteratorInvalidated: Boolean;
+    FRemoveOperationCount: Cardinal;
+    FLastNodeRemoved : PKeyValuePairNode;
     FPackingRequired : Boolean;
     FKeyValuePairNodeAllocator : TFixedBlockHeap;
     FKeyValuePairBacktrackNodeAllocator : TFixedBlockHeap;
@@ -130,7 +132,7 @@ uses
 resourcestring
   SInternalErrorUseHashTableWithHashSize = 'Internal error: if AUseHashTable is True then AHashSize must be <= 20 calling constructor THashTrie.Create()';
   SInternalErrorCheckParameterAHashSize = 'Internal error: check parameter AHashSize calling THashTrie.Create() constructor';
-  StrIteratorWasInvalidated = 'Iterator was invalidated with prior call to Remove(Key) method. Please use RemoveCurrentNode instead';
+  StrIteratorWasInvalidated = 'Iterator was invalidated by removing a different node than the currently being pointed at by it';
 
 function HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin
@@ -158,7 +160,6 @@ begin
   FContainer.OnInitLeaf := {$IFDEF FPC}@{$ENDIF}InitLeaf;
   FKeyValuePairNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairNode), _16KB div sizeof(TKeyValuePairNode));
   FKeyValuePairBacktrackNodeAllocator := TFixedBlockHeap.Create(sizeof(TKeyValuePairBacktrackNode), _16KB div sizeof(TKeyValuePairBacktrackNode));
-  FIteratorInvalidated := True;
 end;
 
 destructor THashTrie.Destroy;
@@ -446,7 +447,6 @@ begin
       begin
         RemoveKVPTreeNode(ParentNodePtr, Node);
         Result := True;
-        FIteratorInvalidated := True;
         exit;
       end;
     if Hash < Node^.KVP.Hash then
@@ -475,7 +475,8 @@ begin
   AIterator.BackTrack := nil;
   AIterator.CurNodeParent := nil;
   AIterator.CurNode := nil;
-  FIteratorInvalidated := False;
+  AIterator.RemoveOperationCount := FRemoveOperationCount;
+  FLastNodeRemoved := nil;
 end;
 
 {$IFDEF DEBUG}
@@ -554,8 +555,11 @@ var
   Node : PTrieBranchNode;
   KVPNode : PKeyValuePairNode;
 begin
-  {if FIteratorInvalidated then
-    raise EHashTrie.Create(StrIteratorWasInvalidated);}
+  if (FRemoveOperationCount - AIterator.RemoveOperationCount > 1) or
+     ((FRemoveOperationCount - AIterator.RemoveOperationCount = 1) and
+      (FLastNodeRemoved <> AIterator.CurNode)) then
+    raise EHashTrie.Create(StrIteratorWasInvalidated);
+  AIterator.RemoveOperationCount := FRemoveOperationCount;
   if AIterator.BackTrack <> nil then
   begin
     NextKVPTreeNode(AIterator);
@@ -707,6 +711,8 @@ begin
   else trieAllocators.DeAlloc(Node);
   dec(FCount);
   FPackingRequired := True;
+  inc(FRemoveOperationCount);
+  FLastNodeRemoved := Node;
 end;
 
 function THashTrie.ListOfValues: TList;

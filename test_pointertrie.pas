@@ -51,17 +51,17 @@ type
     procedure SetUp; override;
     procedure TearDown; override;
   published
-    procedure TestCreateSuccess;
-    procedure TestAddPointerSuccess;
-    procedure TestAddPointerAndFindSuccess;
-    procedure TestAddPointerAndFindNonExistingPointerFailure;
-    procedure TestAddALotOfPointersAndFindThemSuccess;
-    procedure TestAddDuplicatePointerAfterRemovalSuccess;
-    procedure TestAddTwoPointersIterateSuccess;
-    procedure TestAddALotOfPointersIterateThemAndCheckThem;
-    procedure TestRandomAccessSuccess;
-    procedure TestPackSuccess;
-    procedure TestPackStressSuccess;
+    procedure TestCreate_Succeeds;
+    procedure TestAddPointer_Succeeds;
+    procedure TestAddPointerAndFind_Succeeds;
+    procedure TestAddPointerAndFindNonExistingPointer_Fails;
+    procedure TestAddALotOfPointersAndFindThem_Succeeds;
+    procedure TestAddDuplicatePointerAfterRemoval_Succeeds;
+    procedure TestAddTwoPointersIterate_Succeeds;
+    procedure TestAddALotOfPointersIterateThemAndCheckThem_Succeeds;
+    procedure TestRandomAccess_Succeeds;
+    procedure TestPack_Succeeds;
+    procedure TestPackStress_Succeeds;
   end;
 
 implementation
@@ -86,23 +86,23 @@ begin
     Check(FPointerTrie.Find(APointers[i]), 'Pointer not found');
 end;
 
-procedure TTestPointerTrie.TestCreateSuccess;
+procedure TTestPointerTrie.TestCreate_Succeeds;
 begin
   Check(FPointerTrie <> nil, 'FPointerTrie must be <> nil');
 end;
 
-procedure TTestPointerTrie.TestAddPointerSuccess;
+procedure TTestPointerTrie.TestAddPointer_Succeeds;
 begin
   FPointerTrie.Add(Self);
 end;
 
-procedure TTestPointerTrie.TestAddPointerAndFindSuccess;
+procedure TTestPointerTrie.TestAddPointerAndFind_Succeeds;
 begin
   FPointerTrie.Add(Self);
   Check(FPointerTrie.Find(Self), 'Could not find Self in PointerTrie');
 end;
 
-procedure TTestPointerTrie.TestAddPointerAndFindNonExistingPointerFailure;
+procedure TTestPointerTrie.TestAddPointerAndFindNonExistingPointer_Fails;
 var
   p : NativeUInt;
 begin
@@ -111,7 +111,7 @@ begin
   Check(not FPointerTrie.Find({%H-}Pointer(p)), 'Non existing pointer should not be found');
 end;
 
-procedure TTestPointerTrie.TestAddALotOfPointersAndFindThemSuccess;
+procedure TTestPointerTrie.TestAddALotOfPointersAndFindThem_Succeeds;
 var
   Pointers : array of Pointer;
   i : integer;
@@ -131,7 +131,7 @@ begin
     FreeMem(Pointers[i]);
 end;
 
-procedure TTestPointerTrie.TestAddDuplicatePointerAfterRemovalSuccess;
+procedure TTestPointerTrie.TestAddDuplicatePointerAfterRemoval_Succeeds;
 begin
   FPointerTrie.Add(Self);
   FPointerTrie.Add(FPointerTrie);
@@ -142,7 +142,7 @@ begin
   CheckEquals(2, FPointerTrie.Count, 'Count doesn''t match');
 end;
 
-procedure TTestPointerTrie.TestAddTwoPointersIterateSuccess;
+procedure TTestPointerTrie.TestAddTwoPointersIterate_Succeeds;
 var
   Iterator : TTrieIterator;
   p1, p2, p3 : Pointer;
@@ -159,7 +159,8 @@ begin
   Check(p3 = nil, 'p3 should be nil');
 end;
 
-procedure TTestPointerTrie.TestAddALotOfPointersIterateThemAndCheckThem;
+procedure
+    TTestPointerTrie.TestAddALotOfPointersIterateThemAndCheckThem_Succeeds;
 var
   Pointers : array of Pointer;
   i : integer;
@@ -180,7 +181,7 @@ begin
     FreeMem(Pointers[i]);
 end;
 
-procedure TTestPointerTrie.TestRandomAccessSuccess;
+procedure TTestPointerTrie.TestRandomAccess_Succeeds;
 var
   Pointers : array of Pointer;
   i : integer;
@@ -208,7 +209,7 @@ begin
       FreeMem(Pointers[i]);
 end;
 
-procedure TTestPointerTrie.TestPackSuccess;
+procedure TTestPointerTrie.TestPack_Succeeds;
 begin
   FPointerTrie.Add(Pointer($00000001));
   FPointerTrie.Add(Pointer($00000002));
@@ -232,7 +233,7 @@ begin
   Check(FPointerTrie.Find(Pointer($10000000)), 'Pointer($10000000) not found');
 end;
 
-procedure TTestPointerTrie.TestPackStressSuccess;
+procedure TTestPointerTrie.TestPackStress_Succeeds;
 var
   Pointers : array of Pointer;
   i : integer;
