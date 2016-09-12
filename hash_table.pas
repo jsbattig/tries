@@ -69,6 +69,9 @@ function HashSizeToTrieDepth(AHashSize: Byte): Byte; inline;
 
 implementation
 
+uses
+  SysUtils { SysUtils required for inline expansion using GetBitFieldIndex};
+
 resourcestring
   SNotSupportedHashSize = 'Not supported hash size. Valid sizes are 16 to 20 bits';
 

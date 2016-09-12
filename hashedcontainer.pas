@@ -38,10 +38,14 @@ type
     Busy : Word;
   end;
 
+const
+  ChildIndexArrayLength = 2;
+
+type
   PTrieBranchNode = ^TTrieBranchNode;
   TTrieBranchNode = record
     Base : TTrieBaseNode;
-    ChildIndex : array[0..1] of Cardinal;
+    ChildIndex : array[0..ChildIndexArrayLength - 1] of Cardinal;
     Children : Pointer;
   end;
 
@@ -55,6 +59,7 @@ const
   TrieDepth64Bits            = (sizeof(Int64) * BitsPerByte) div BitsForChildIndexPerBucket;
   TrieDepthPointerSize       = (sizeof(Pointer) * BitsPerByte) div BitsForChildIndexPerBucket;
   ChildrenPerBucket          = BitsForChildIndexPerBucket * BitsForChildIndexPerBucket;
+  ChildIndexesPerBitField    = ChildrenPerBucket div ChildIndexArrayLength;
 
 type
   PTrieLeafNode = ^TTrieLeafNode;
@@ -121,6 +126,9 @@ type
 
 implementation
 
+const
+  GetChildIndexMask : array[0..7] of Cardinal = ($F, $F0, $F00, $F000, $F0000, $F00000, $F000000, $F0000000);
+
 { THashedContainer }
 
 constructor TBaseHashedContainer.Create(AHashSize: Byte; ALeafSize: Cardinal);
@@ -138,7 +146,58 @@ end;
 
 function ChildIndexShift(HashSize, Level : Byte) : Byte; inline;
 begin
-  Result := (HashSize div BitsForChildIndexPerBucket - Level - 1) * BitsForChildIndexPerBucket;
+  case HashSize of
+    16 :
+      case Level of
+        0 : Result := 12;
+        1 : Result := 8;
+        2 : Result := 4;
+        3 : Result := 0;
+        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+      end;
+    20 :
+      case Level of
+        0 : Result := 16;
+        1 : Result := 12;
+        2 : Result := 8;
+        3 : Result := 4;
+        4 : Result := 0;
+        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+      end;
+    32 :
+      case Level of
+        0 : Result := 28;
+        1 : Result := 24;
+        2 : Result := 20;
+        3 : Result := 16;
+        4 : Result := 12;
+        5 : Result := 8;
+        6 : Result := 4;
+        7 : Result := 0;
+        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+      end;
+    64 :
+      case Level of
+        0  : Result := 60;
+        1  : Result := 56;
+        2  : Result := 52;
+        3  : Result := 48;
+        4  : Result := 44;
+        5  : Result := 40;
+        6  : Result := 36;
+        7  : Result := 32;
+        8  : Result := 28;
+        9  : Result := 24;
+        10 : Result := 20;
+        11 : Result := 16;
+        12 : Result := 12;
+        13 : Result := 8;
+        14 : Result := 4;
+        15 : Result := 0;
+        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+      end
+    else raise EHashedContainer.CreateFmt('Hashsize %d not supported', [HashSize]);
+  end;
 end;
 
 function TBaseHashedContainer.GetBitFieldIndex(const Data; Level: Byte): Byte;
@@ -165,8 +224,13 @@ end;
 
 function TBaseHashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
     Byte): Byte;
+var
+  ChildIndexArrayIndex : Byte;
+  RealBitFieldIndex : Cardinal;
 begin
-  Result := (ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] shr (Cardinal(BitFieldIndex mod (ChildrenPerBucket div 2)) * BitsForChildIndexPerBucket)) and BucketMask;
+  ChildIndexArrayIndex := BitFieldIndex div ChildIndexesPerBitField;
+  RealBitFieldIndex := BitFieldIndex mod ChildIndexesPerBitField;
+  Result := (ANode^.ChildIndex[ChildIndexArrayIndex] shr (RealBitFieldIndex * BitsForChildIndexPerBucket)) and BucketMask;
 end;
 
 procedure TBaseHashedContainer.InitLeaf(var Leaf);
@@ -192,14 +256,32 @@ end;
 
 function CleanChildIndexMask(BitFieldIndex : Byte): Cardinal; inline;
 begin
-  Result := Cardinal(-1) xor (Cardinal(BucketMask) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+  case BitFieldIndex of
+    0 : Result := $FFFFFFF0;
+    1 : Result := $FFFFFF0F;
+    2 : Result := $FFFFF0FF;
+    3 : Result := $FFFF0FFF;
+    4 : Result := $FFF0FFFF;
+    5 : Result := $FF0FFFFF;
+    6 : Result := $F0FFFFFF;
+    7 : Result := $0FFFFFFF;
+    else raise EHashedContainer.CreateFmt('Wrong value for BitFieldIndex %d', [BitFieldIndex]);
+  end;
 end;
 
 procedure TBaseHashedContainer.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
     ChildIndex: Byte);
+var
+  ChildIndexArrayIndex : Byte;
+  RealBitFieldIndex : Cardinal;
+  ChildIndexEncodedValue : Cardinal;
 begin
-  ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] := ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] and CleanChildIndexMask(BitFieldIndex mod (ChildrenPerBucket div 2));
-  ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] := ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] or (Cardinal(ChildIndex shl ((BitFieldIndex mod (ChildrenPerBucket div 2) * BitsForChildIndexPerBucket))));
+  ChildIndexArrayIndex := BitFieldIndex div ChildIndexesPerBitField;
+  RealBitFieldIndex := BitFieldIndex mod ChildIndexesPerBitField;
+  ChildIndexEncodedValue := ANode^.ChildIndex[ChildIndexArrayIndex];
+  ChildIndexEncodedValue := ChildIndexEncodedValue and CleanChildIndexMask(RealBitFieldIndex);
+  ChildIndexEncodedValue := ChildIndexEncodedValue or (Cardinal(ChildIndex) shl (RealBitFieldIndex * BitsForChildIndexPerBucket));
+  ANode^.ChildIndex[ChildIndexArrayIndex] := ChildIndexEncodedValue;
 end;
 
 { THashedContainer }
