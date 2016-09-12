@@ -210,7 +210,8 @@ end;
 procedure THashTrie.InitLeaf(var Leaf);
 begin
   THashTrieNode(Leaf).Children := nil;
-  THashTrieNode(Leaf).ChildIndex := 0;
+  THashTrieNode(Leaf).ChildIndex[0] := 0;
+  THashTrieNode(Leaf).ChildIndex[1] := 0;
 end;
 
 procedure THashTrie.FreeKey(key: Pointer; KeySize: Cardinal);
