@@ -29,6 +29,9 @@ interface
 uses
   SysUtils;
 
+const
+  HashSizeNotSupportedError = 'Hashsize %d not supported';
+
 type
   _Int64 = {$IFDEF FPC}Int64{$ELSE}UInt64{$ENDIF};
 
@@ -126,9 +129,6 @@ type
 
 implementation
 
-const
-  GetChildIndexMask : array[0..7] of Cardinal = ($F, $F0, $F00, $F000, $F0000, $F00000, $F000000, $F0000000);
-
 { THashedContainer }
 
 constructor TBaseHashedContainer.Create(AHashSize: Byte; ALeafSize: Cardinal);
@@ -145,6 +145,8 @@ begin
 end;
 
 function ChildIndexShift(HashSize, Level : Byte) : Byte; inline;
+const
+  LevelNotSupportedError = 'Level %d not supported for Hashsize %d';
 begin
   case HashSize of
     16 :
@@ -153,7 +155,7 @@ begin
         1 : Result := 8;
         2 : Result := 4;
         3 : Result := 0;
-        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+        else raise EHashedContainer.CreateFmt(LevelNotSupportedError, [Level, HashSize]);
       end;
     20 :
       case Level of
@@ -162,7 +164,7 @@ begin
         2 : Result := 8;
         3 : Result := 4;
         4 : Result := 0;
-        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+        else raise EHashedContainer.CreateFmt(LevelNotSupportedError, [Level, HashSize]);
       end;
     32 :
       case Level of
@@ -174,7 +176,7 @@ begin
         5 : Result := 8;
         6 : Result := 4;
         7 : Result := 0;
-        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+        else raise EHashedContainer.CreateFmt(LevelNotSupportedError, [Level, HashSize]);
       end;
     64 :
       case Level of
@@ -194,9 +196,9 @@ begin
         13 : Result := 8;
         14 : Result := 4;
         15 : Result := 0;
-        else raise EHashedContainer.CreateFmt('Level %d not supported for Hashsize %d', [Level, HashSize]);
+        else raise EHashedContainer.CreateFmt(LevelNotSupportedError, [Level, HashSize]);
       end
-    else raise EHashedContainer.CreateFmt('Hashsize %d not supported', [HashSize]);
+    else raise EHashedContainer.CreateFmt(HashSizeNotSupportedError, [HashSize]);
   end;
 end;
 
@@ -240,10 +242,8 @@ begin
 end;
 
 procedure TBaseHashedContainer.RaiseHashSizeError;
-const
-  STR_HASHSIZEERROR = 'Wrong hash size';
 begin
-  raise EHashedContainer.Create(STR_HASHSIZEERROR);
+  raise EHashedContainer.CreateFmt(HashSizeNotSupportedError, [FHashSize]);
 end;
 
 procedure TBaseHashedContainer.SetBusyIndicator(ANode: PTrieBaseNode;
