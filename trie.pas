@@ -168,7 +168,8 @@ begin
   Result^.Base.Busy := 0;
   Result^.Base.ChildrenCount := 0;
   Result^.Children := nil;
-  Result^.ChildIndex := 0;
+  Result^.ChildIndex[0] := 0;
+  Result^.ChildIndex[1] := 0;
 end;
 
 procedure TTrie.FreeTrieNode(ANode: PTrieBaseNode; Level: Byte);
@@ -541,7 +542,8 @@ procedure TTrie.PackNode(var AIterator: TTrieIterator; const ChildrenBackup: arr
 var
   j, BitFieldIndex : Cardinal;
 begin
-  PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex := 0;
+  PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex[0] := 0;
+  PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.ChildIndex[1] := 0;
   if AIterator.NodeStack[AIterator.Level]^.ChildrenCount > 0 then
   begin
     ReallocMem(PTrieBranchNode(AIterator.NodeStack[AIterator.Level])^.Children,

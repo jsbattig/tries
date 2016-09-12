@@ -41,7 +41,7 @@ type
   PTrieBranchNode = ^TTrieBranchNode;
   TTrieBranchNode = record
     Base : TTrieBaseNode;
-    ChildIndex : Int64;
+    ChildIndex : array[0..1] of Cardinal;
     Children : Pointer;
   end;
 
@@ -166,7 +166,7 @@ end;
 function TBaseHashedContainer.GetChildIndex(ANode: PTrieBranchNode; BitFieldIndex:
     Byte): Byte;
 begin
-  Result := (ANode^.ChildIndex shr (Int64(BitFieldIndex) * BitsForChildIndexPerBucket)) and BucketMask;
+  Result := (ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] shr (Cardinal(BitFieldIndex mod (ChildrenPerBucket div 2)) * BitsForChildIndexPerBucket)) and BucketMask;
 end;
 
 procedure TBaseHashedContainer.InitLeaf(var Leaf);
@@ -190,16 +190,16 @@ begin
   else ANode^.Busy := ANode^.Busy and not (Word(1) shl BitFieldIndex);
 end;
 
-function CleanChildIndexMask(BitFieldIndex : Byte) : Int64; inline;
+function CleanChildIndexMask(BitFieldIndex : Byte): Cardinal; inline;
 begin
-  Result := Int64(-1) xor (Int64(BucketMask) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+  Result := Cardinal(-1) xor (Cardinal(BucketMask) shl (BitFieldIndex * BitsForChildIndexPerBucket));
 end;
 
 procedure TBaseHashedContainer.SetChildIndex(ANode: PTrieBranchNode; BitFieldIndex,
     ChildIndex: Byte);
 begin
-  ANode^.ChildIndex := ANode^.ChildIndex and CleanChildIndexMask(BitFieldIndex);
-  ANode^.ChildIndex := ANode^.ChildIndex or (_Int64(ChildIndex) shl (BitFieldIndex * BitsForChildIndexPerBucket));
+  ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] := ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] and CleanChildIndexMask(BitFieldIndex mod (ChildrenPerBucket div 2));
+  ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] := ANode^.ChildIndex[BitFieldIndex div (ChildrenPerBucket div 2)] or (Cardinal(ChildIndex shl ((BitFieldIndex mod (ChildrenPerBucket div 2) * BitsForChildIndexPerBucket))));
 end;
 
 { THashedContainer }
