@@ -133,6 +133,7 @@ resourcestring
   SInternalErrorUseHashTableWithHashSize = 'Internal error: if AUseHashTable is True then AHashSize must be <= 20 calling constructor THashTrie.Create()';
   SInternalErrorCheckParameterAHashSize = 'Internal error: check parameter AHashSize calling THashTrie.Create() constructor';
   StrIteratorWasInvalidated = 'Iterator was invalidated by removing a different node than the currently being pointed at by it';
+  SHashTableMaxHashSizeIs20 = 'HashTable mode maximum hashsize is 20bits';
 
 function HashSizeToTrieDepth(AHashSize: Byte): Byte;
 begin
@@ -153,7 +154,9 @@ begin
     raise EHashTrie.Create(SInternalErrorUseHashTableWithHashSize);
   FTrieDepth := HashSizeToTrieDepth(AHashSize);
   inherited Create(AHashSize, sizeof(THashTrieNode));
-  if (AHashSize <= 20) and AUseHashTable then
+  if (AHashSize > 20) and AUseHashTable then
+    raise EHashTrie.Create(SHashTableMaxHashSizeIs20);
+  if AUseHashTable then
     FContainer := THashTable.Create(AHashSize, sizeof(THashTrieNode))
   else FContainer := TTrie.Create(FTrieDepth, sizeof(THashTrieNode));
   FContainer.OnFreeTrieNode := {$IFDEF FPC}@{$ENDIF}FreeTrieNode;
@@ -165,9 +168,15 @@ end;
 destructor THashTrie.Destroy;
 begin
   inherited;
-  FContainer.Free;
-  FKeyValuePairBacktrackNodeAllocator.Free;
-  FKeyValuePairNodeAllocator.Free;
+  if FContainer <> nil then
+  begin
+    Clear;
+    FreeAndNil(FContainer);
+  end;
+  if FKeyValuePairBacktrackNodeAllocator <> nil then
+    FreeAndNil(FKeyValuePairBacktrackNodeAllocator);
+  if FKeyValuePairNodeAllocator <> nil then
+    FreeAndNil(FKeyValuePairNodeAllocator);
 end;
 
 function THashTrie.Hash16(key: Pointer; KeySize, ASeed: Cardinal): Word;
@@ -200,9 +209,9 @@ procedure THashTrie.CalcHash(out Hash: THashRecord; key: Pointer; KeySize:
     Cardinal; ASeed: _Int64; AHashSize: Byte);
 begin
   case AHashSize of
-    1..16  : Hash.Hash16 := Hash16(key, KeySize, ASeed);
-    17..32 : Hash.Hash32 := Hash32(key, KeySize, ASeed);
-    33..64 : Hash.Hash64 := Hash64(key, KeySize, ASeed);
+    16 : Hash.Hash16 := Hash16(key, KeySize, ASeed);
+    20, 32 : Hash.Hash32 := Hash32(key, KeySize, ASeed);
+    64 : Hash.Hash64 := Hash64(key, KeySize, ASeed);
     else RaiseHashSizeError;
   end;
 end;
@@ -265,7 +274,7 @@ var
   WasNodeBusy : Boolean;
   ChildIndex : Byte;
 begin
-  if HashSize * 2 > 64 then
+  if HashSize = 64 then
   begin
     CalcHash(Hash, kvp.Key, kvp.KeySize, TRIE_HASH_SEED, HashSize);
     CalcHash(TreeHash, kvp.Key, kvp.KeySize, TREE_HASH_SEED, HashSize);
@@ -382,7 +391,7 @@ var
   Hash, TreeHash : THashRecord;
   Node : PKeyValuePairNode;
 begin
-  if HashSize * 2 > 64 then
+  if HashSize = 64 then
   begin
     CalcHash(Hash, key, KeySize, TRIE_HASH_SEED, HashSize);
     CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
@@ -431,7 +440,7 @@ begin
     exit;
   ParentNodePtr := @PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex];
   Node := PHashTrieNodeArray(HashTrieNode^.Children)^[AChildIndex];
-  if HashSize * 2 > 64 then
+  if HashSize = 64 then
   begin
     CalcHash(TreeHash, key, KeySize, TREE_HASH_SEED, HashSize);
     Hash := TreeHash.Hash16;

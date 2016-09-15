@@ -86,7 +86,7 @@ constructor THashTable.Create(AHashSize: Byte; ALeafSize: Cardinal);
 var
   i : integer;
 begin
-  if (AHashSize < sizeof(Word) * BitsPerByte) or (AHashSize > sizeof(Word) * BitsPerByte + BitsForChildIndexPerBucket) then
+  if not (AHashSize in [16, 20]) then
     raise EHashedContainer.Create(SNotSupportedHashSize);
   inherited;
   FHashTableMaxNodeCount := (1 shl AHashSize) div ChildrenPerBucket;
@@ -172,7 +172,7 @@ end;
 
 function THashTable.GetTableIndex(const Data): Word;
 begin
-  if HashSize <= 16 then
+  if HashSize = 16 then
     Result := Word(Data) div ChildrenPerBucket
   else Result := Cardinal(Data) div ChildrenPerBucket;
 end;

@@ -208,12 +208,9 @@ begin
   Result := 0;
   {$ENDIF}
   case FHashSize of
-    1..sizeof(Word) * BitsPerByte :
-      Result := (Word(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
-    sizeof(Word) * BitsPerByte + 1..sizeof(Cardinal) * BitsPerByte :
-      Result := (Integer(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
-    sizeof(Cardinal) * BitsPerByte + 1..sizeof(Int64) * BitsPerByte :
-      Result := (Int64(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
+    16 : Result := (Word(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
+    20, 32 : Result := (Integer(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
+    64 : Result := (Int64(Data) shr ChildIndexShift(FHashSize, Level)) and BucketMask;
     else RaiseHashSizeError;
   end;
 end;
