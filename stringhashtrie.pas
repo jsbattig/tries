@@ -109,7 +109,8 @@ end;
 destructor TStringHashTrie.Destroy;
 begin
   inherited;
-  FPAnsiCharAllocator.Free;
+  if FPAnsiCharAllocator <> nil then
+    FreeAndNil(FPAnsiCharAllocator);
 end;
 
 function TStringHashTrie.CompareKeys(key1: Pointer; KeySize1: Cardinal; key2:

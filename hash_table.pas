@@ -99,9 +99,15 @@ end;
 destructor THashTable.Destroy;
 begin
   inherited;
-  Clear;
-  FLeafNodesAllocator.Free;
-  FreeMem(FHashTable);
+  if FHashTable <> nil then
+    Clear;
+  if FLeafNodesAllocator <> nil then
+    FreeAndNil(FLeafNodesAllocator);
+  if FHashTable <> nil then
+  begin
+    FreeMem(FHashTable);
+    FHashTable := nil;
+  end;
 end;
 
 function THashTable.Add(const Data; out Node : PTrieLeafNode; out WasBusy :

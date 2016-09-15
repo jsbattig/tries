@@ -157,8 +157,13 @@ end;
 
 destructor TTrie.Destroy;
 begin
-  FreeTrieNode(@FRoot^.Base, 0);
-  FTrieBranchNodeAllocator.Free;
+  if FRoot <> nil then
+  begin
+    FreeTrieNode(@FRoot^.Base, 0);
+    FRoot := nil;
+  end;
+  if FTrieBranchNodeAllocator <> nil then
+    FreeAndNil(FTrieBranchNodeAllocator);
   inherited Destroy;
 end;
 
