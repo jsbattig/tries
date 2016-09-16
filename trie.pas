@@ -279,7 +279,9 @@ var
   CurNode : PTrieBaseNode;
 begin
   {$IFNDEF FPC}
+  {$IFNDEF CPUX64}
   ChildIndex := 0;
+  {$ENDIF}
   {$ENDIF}
   Result := False;
   CurNode := @FRoot^.Base;
