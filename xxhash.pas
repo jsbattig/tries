@@ -183,7 +183,7 @@ end;
 
 function xxHash32Calc(const AString: string; ASeed: LongWord): LongWord;
 begin
-  Result := xxHash32Calc(PChar(AString), length(AString), ASeed);
+  Result := xxHash32Calc({$IFNDEF FPC}TEncoding.UTF8.GetBytes{$ELSE} PChar {$ENDIF}(AString), length(AString), ASeed);
 end;
 
 function xxHash64Calc(ABuffer: Pointer; ALength: Cardinal; ASeed: QWord = 0):
@@ -262,7 +262,7 @@ end;
 
 function xxHash64Calc(const AString: string; ASeed: QWord): QWord;
 begin
-  Result := xxHash64Calc(PChar(AString), length(AString), ASeed);
+  Result := xxHash64Calc({$IFNDEF FPC}TEncoding.UTF8.GetBytes{$ELSE} PChar {$ENDIF}(AString), length(AString), ASeed);
 end;
 
 { TxxHash32 }
