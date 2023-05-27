@@ -95,6 +95,9 @@ implementation
 {$IFNDEF FPC}
 {$IFOPT Q+}{$DEFINE OVERFLOWCHECKSON}{$ENDIF}
 {$Q-}
+uses
+  SysUtils;
+
 function RoLWord(Value: Word; N: Integer): Word; inline;
 begin
   Result:= ((Value shl N) and $ffff) or (Value shr (16-N));
@@ -116,12 +119,12 @@ begin
 end;
 
 (* The following two functions will blow up if inlined in Delphi 2007 *)
-function RoLQWord(Value: Int64; N: Integer): Int64; {$IFNDEF VER180} inline; {$ENDIF}
+function RoLQWord(Value: QWord; N: Integer): QWord; {$IFNDEF VER180} inline; {$ENDIF}
 begin
   Result:= (Value shl N) or (Value shr (64-N));
 end;
 
-function RoRQWord(Value: Int64; N: Integer): Int64; {$IFNDEF VER180} inline; {$ENDIF}
+function RoRQWord(Value: QWord; N: Integer): QWord; {$IFNDEF VER180} inline; {$ENDIF}
 begin
   Result:= (Value shr N) or (Value shl (64-N));
 end;

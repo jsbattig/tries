@@ -283,11 +283,6 @@ var
   i, BitFieldIndex, ChildIndex, ATrieDepth : Byte;
   CurNode : PTrieBaseNode;
 begin
-  {$IFNDEF FPC}
-  {$IFNDEF CPUX64}
-  ChildIndex := 0;
-  {$ENDIF}
-  {$ENDIF}
   Result := False;
   CurNode := @FRoot^.Base;
   ATrieDepth := FTrieDepth;
